@@ -92,23 +92,101 @@
     return Object.prototype.hasOwnProperty.call(NAV_MODES, mode) ? mode : '驾车';
   }
 
-  // 常见内地城市 → 携程城市三字码（多机场城市用城市码：北京 BJS、上海 SHA、西安 SIA）
+  // 城市名 → 携程城市三字码（多机场城市用城市码：北京 BJS、上海 SHA、西安 SIA）
   const CITY_CODES = {
-    '北京': 'BJS', '上海': 'SHA', '广州': 'CAN', '深圳': 'SZX', '成都': 'CTU',
-    '杭州': 'HGH', '武汉': 'WUH', '西安': 'SIA', '重庆': 'CKG', '南京': 'NKG',
-    '昆明': 'KMG', '厦门': 'XMN', '青岛': 'TAO', '长沙': 'CSX', '天津': 'TSN',
-    '大连': 'DLC', '郑州': 'CGO', '三亚': 'SYX', '海口': 'HAK', '哈尔滨': 'HRB',
-    '沈阳': 'SHE', '福州': 'FOC', '济南': 'TNA', '宁波': 'NGB', '合肥': 'HFE',
-    '贵阳': 'KWE', '南宁': 'NNG', '太原': 'TYN', '石家庄': 'SJW', '南昌': 'KHN',
-    '温州': 'WNZ', '珠海': 'ZUH', '兰州': 'LHW', '银川': 'INC', '西宁': 'XNN',
-    '呼和浩特': 'HET', '乌鲁木齐': 'URC', '拉萨': 'LXA', '丽江': 'LJG', '桂林': 'KWL',
-    '无锡': 'WUX', '烟台': 'YNT', '泉州': 'JJN', '常州': 'CZX',
+    '青岛': 'TAO', '长沙': 'CSX',
+    '阿勒泰': 'AAT', '安庆': 'AQG', '阿克苏': 'AKU', '鞍山': 'AOG',
+    '安顺': 'AVA', '阿拉善左旗': 'AXF', '阿里': 'NGQ', '阿拉善右旗': 'RHT',
+    '阿尔山': 'YIE', '安康': 'AKA', '安阳': 'HQQ', '阿拉尔': 'ACF',
+    '澳门': 'MFM', '巴中': 'BZX', '百色': 'AEB', '包头': 'BAV',
+    '毕节': 'BFJ', '北海': 'BHY', '北京': 'BJS', '博乐': 'BPL',
+    '保山': 'BSD', '白城': 'DBC', '布尔津': 'KJI', '白山': 'NBS',
+    '巴彦淖尔': 'RLK', '蚌埠': 'BFU', '亳州': 'BZJ', '昌都': 'BPX',
+    '承德': 'CDE', '常德': 'CGD', '长春': 'CGQ', '朝阳': 'CHG',
+    '赤峰': 'CIF', '长治': 'CIH', '沧源': 'CWJ', '常州': 'CZX',
+    '池州': 'JUH', '郴州': 'HCZ', '大同': 'DAT', '达州': 'DAX',
+    '稻城': 'DCY', '丹东': 'DDG', '迪庆': 'DIG', '大理': 'DLU',
+    '敦煌': 'DNH', '东营': 'DOY', '大庆': 'DQA', '德令哈': 'HXD',
+    '大连': 'DLC', '鄂尔多斯': 'DSN', '额济纳旗': 'EJN', '恩施': 'ENH',
+    '二连浩特': 'ERL', '鄂州': 'EHU', '阜阳': 'FUG', '抚远': 'FYJ',
+    '富蕴': 'FYN', '福州': 'FOC', '佛山': 'FUO', '果洛': 'GMQ',
+    '格尔木': 'GOQ', '广元': 'GYS', '固原': 'GYU', '高雄': 'KHH',
+    '赣州': 'KOW', '贵阳': 'KWE', '桂林': 'KWL', '广州': 'CAN',
+    '甘孜': 'GZG', '红原': 'AHJ', '海口': 'HAK', '河池': 'HCJ',
+    '邯郸': 'HDG', '黑河': 'HEK', '呼和浩特': 'HET', '合肥': 'HFE',
+    '淮安': 'HIA', '怀化': 'HJJ', '海拉尔': 'HLD', '哈密': 'HMI',
+    '衡阳': 'HNY', '哈尔滨': 'HRB', '和田': 'HTN', '花土沟': 'HTT',
+    '花莲': 'HUN', '霍林郭勒': 'HUO', '惠州': 'HUZ', '汉中': 'HZG',
+    '黄山': 'TXN', '呼伦贝尔': 'XRQ', '杭州': 'HGH', '菏泽': 'HZA',
+    '香港': 'HKG', '嘉义': 'CYI', '景德镇': 'JDZ', '加格达奇': 'JGD',
+    '嘉峪关': 'JGN', '井冈山': 'JGS', '金昌': 'JIC', '九江': 'JIU',
+    '佳木斯': 'JMU', '济宁': 'JNG', '锦州': 'JNZ', '建三江': 'JSJ',
+    '鸡西': 'JXA', '九寨沟': 'JZH', '金门': 'KNH', '揭阳': 'SWA',
+    '济南': 'TNA', '库车': 'KCA', '康定': 'KGT', '喀什': 'KHG',
+    '凯里': 'KJH', '库尔勒': 'KRL', '克拉玛依': 'KRY', '昆明': 'KMG',
+    '黎平': 'HZH', '澜沧': 'JMJ', '龙岩': 'LCX', '临汾': 'LFQ',
+    '兰州': 'LHW', '丽江': 'LJG', '荔波': 'LLB', '吕梁': 'LLV',
+    '临沧': 'LNJ', '陇南': 'LNL', '六盘水': 'LPF', '拉萨': 'LXA',
+    '洛阳': 'LYA', '连云港': 'LYG', '临沂': 'LYI', '柳州': 'LZH',
+    '泸州': 'LZO', '林芝': 'LZY', '丽水': 'LIJ', '芒市': 'LUM',
+    '牡丹江': 'MDG', '马祖': 'MFK', '绵阳': 'MIG', '梅州': 'MXZ',
+    '马公': 'MZG', '满洲里': 'NZH', '漠河': 'OHE', '南昌': 'KHN',
+    '南竿': 'LZN', '南充': 'NAO', '宁波': 'NGB', '宁蒗': 'NLH',
+    '南宁': 'NNG', '南阳': 'NNY', '南通': 'NTG', '南京': 'NKG',
+    '攀枝花': 'PZI', '普洱': 'SYM', '琼海': 'BAR', '秦皇岛': 'BPE',
+    '祁连': 'HBQ', '且末': 'IQM', '庆阳': 'IQN', '黔江': 'JIQ',
+    '泉州': 'JJN', '衢州': 'JUZ', '齐齐哈尔': 'NDG', '日照': 'RIZ',
+    '日喀则': 'RKZ', '若羌': 'RQA', '神农架': 'HPG', '莎车': 'QSZ',
+    '沈阳': 'SHE', '石河子': 'SHF', '石家庄': 'SJW', '上饶': 'SQD',
+    '三明': 'SQJ', '十堰': 'WDS', '邵阳': 'WGN', '松原': 'YSQ',
+    '上海': 'SHA', '深圳': 'SZX', '三亚': 'SYX', '朔州': 'SZH',
+    '荆州': 'SHS', '台州': 'HYN', '台中': 'RMQ', '塔城': 'TCG',
+    '腾冲': 'TCZ', '铜仁': 'TEN', '通辽': 'TGO', '天水': 'THQ',
+    '吐鲁番': 'TLQ', '通化': 'TNH', '台南': 'TNN', '台北': 'TPE',
+    '台东': 'TTT', '唐山': 'TVS', '太原': 'TYN', '天津': 'TSN',
+    '图木舒克': 'TWC', '五大连池': 'DTU', '乌兰浩特': 'HLH', '乌兰察布': 'UCB',
+    '乌鲁木齐': 'URC', '潍坊': 'WEF', '威海': 'WEH', '文山': 'WNH',
+    '温州': 'WNZ', '乌海': 'WUA', '武夷山': 'WUS', '无锡': 'WUX',
+    '梧州': 'WUZ', '万州': 'WXN', '乌拉特中旗': 'WZQ', '巫山': 'WSK',
+    '武汉': 'WUH', '芜湖': 'WHA', '武隆': 'CQW', '兴义': 'ACX',
+    '夏河': 'GXH', '西双版纳': 'JHG', '新源': 'NLT', '忻州': 'WUT',
+    '信阳': 'XAI', '襄阳': 'XFN', '西昌': 'XIC', '锡林浩特': 'XIL',
+    '西宁': 'XNN', '徐州': 'XUZ', '厦门': 'XMN', '西安': 'SIA',
+    '延安': 'ENY', '银川': 'INC', '伊春': 'LDS', '永州': 'LLF',
+    '榆林': 'UYN', '宜宾': 'YBP', '运城': 'YCU', '宜春': 'YIC',
+    '宜昌': 'YIH', '伊宁': 'YIN', '义乌': 'YIW', '营口': 'YKH',
+    '延吉': 'YNJ', '烟台': 'YNT', '盐城': 'YNZ', '扬州': 'YTY',
+    '玉树': 'YUS', '岳阳': 'YYA', '于田': 'YTW', '张家界': 'DYG',
+    '舟山': 'HSN', '扎兰屯': 'NZL', '张掖': 'YZY', '昭通': 'ZAT',
+    '湛江': 'ZHA', '中卫': 'ZHY', '张家口': 'ZQZ', '珠海': 'ZUH',
+    '遵义': 'ZYI', '郑州': 'CGO', '重庆': 'CKG', '成都': 'CTU',
+    '昭苏': 'ZFL', '那拉提': 'NLT',
+  };
+  const CITY_ALIASES = {
+    '乌市': '乌鲁木齐', '伊犁': '伊宁', '喀纳斯': '布尔津', '楼兰': '若羌',
+    '香格里拉': '迪庆', '中甸': '迪庆', '景洪': '西双版纳', '晋江': '泉州',
+    '汕头': '揭阳', '梅县': '梅州', '达县': '达州', '襄樊': '襄阳',
+    '长白山': '白山', '黄岩': '台州', '思茅': '普洱', '德宏': '芒市',
+    '黄平': '凯里', '中国香港': '香港', '香港特别行政区': '香港',
+    '中国澳门': '澳门', '澳门特别行政区': '澳门', '中国台北': '台北',
+    '中国高雄': '高雄', '中国台中': '台中',
   };
   const CITY_BY_CODE = {};
   Object.keys(CITY_CODES).forEach(name => { CITY_BY_CODE[CITY_CODES[name]] = name; });
+  CITY_BY_CODE['NLT'] = '新源';
+  CITY_BY_CODE['NBS'] = '白山';
+  CITY_BY_CODE['KJH'] = '凯里';
+  CITY_BY_CODE['DIG'] = '迪庆';
+  CITY_BY_CODE['SWA'] = '揭阳';
+  CITY_BY_CODE['LUM'] = '芒市';
+  CITY_BY_CODE['MXZ'] = '梅州';
+  CITY_BY_CODE['SYM'] = '普洱';
+  CITY_BY_CODE['HKG'] = '香港';
+  CITY_BY_CODE['MFM'] = '澳门';
+  CITY_BY_CODE['TPE'] = '台北';
   const FLIGHT_APPS = ['携程', '去哪儿', '飞猪'];
   const FLIGHT_APP_ALIASES = { '携程旅行': '携程', 'ctrip': '携程', '去哪儿网': '去哪儿', 'qunar': '去哪儿', '飞猪旅行': '飞猪', 'fliggy': '飞猪' };
-  const DEFAULT_FLIGHT_APP = '携程';
+  const DEFAULT_FLIGHT_APP = '飞猪';
 
   function shanghaiTodayYmd() {
     return new Intl.DateTimeFormat('en-CA', {
@@ -143,13 +221,20 @@
     if (m) return ymdFromParts(shanghaiTodayYmd().slice(0, 4), m[1], m[2]);
     return null;
   }
+  function isPlausibleCityName(s) {
+    const n = [...s].length;
+    if (n < 2 || n > 12) return false;
+    return /^[\u3400-\u9FFF\uF900-\uFAFF·]+$/.test(s);
+  }
   function resolveCity(input) {
     const raw = String(input || '').trim();
     if (!raw || [...raw].length > 20 || !isSafeKeyword(raw)) return null;
-    const stripped = raw.replace(/市$/, '');
-    if (CITY_CODES[stripped]) return { name: stripped, code: CITY_CODES[stripped] };
+    const stripped = raw.replace(/(市|地区|县|特别行政区)$/, '');
+    const named = CITY_ALIASES[raw] || CITY_ALIASES[stripped] || stripped;
+    if (CITY_CODES[named]) return { name: named, code: CITY_CODES[named] };
     const code = raw.toUpperCase();
-    if (CITY_BY_CODE[code]) return { name: CITY_BY_CODE[code], code: code };
+    if (/^[A-Z]{3}$/.test(code) && CITY_BY_CODE[code]) return { name: CITY_BY_CODE[code], code: code };
+    if (isPlausibleCityName(named)) return { name: named, code: null };
     return null;
   }
   function resolveFlightApp(name) {
@@ -166,6 +251,7 @@
     const arr = encodeURIComponent(toCity.name);
     switch (app) {
       case '携程':
+        if (!fromCity.code || !toCity.code) return null;
         return 'https://flights.ctrip.com/online/list/oneway-' + fromCity.code + '-' + toCity.code + '?depdate=' + date;
       case '去哪儿':
         return 'https://m.flight.qunar.com/ncs/page/flightlist?depCity=' + dep + '&arrCity=' + arr + '&goDate=' + date;
@@ -214,13 +300,13 @@
       {
         name: 'search_flights',
         description: '查询单程机票并打开结果页。用户说「查机票」「买机票」「搜航班」「携程查西安到北京的机票」「飞猪搜上海飞广州明天的机票」时调用。支持：' +
-          FLIGHT_APPS.join('、') + '。若用户没有指定 App，默认使用携程。必须直接调用本工具，不要先调用 open_phone_app（先打开会把直连页切到后台，查询指令就送不到手机）。只搜索航班，不预订、不付款。日期支持 YYYY-MM-DD、今天/明天/后天，缺省为明天（北京时间）。需要「小智手机直连」网页开着且在前台。',
+          FLIGHT_APPS.join('、') + '。若用户没有指定 App，默认使用飞猪。必须直接调用本工具，不要先调用 open_phone_app（先打开会把直连页切到后台，查询指令就送不到手机）。只搜索航班，不预订、不付款。日期支持 YYYY-MM-DD、今天/明天/后天，缺省为明天（北京时间）。需要「小智手机直连」网页开着且在前台。支持全国城市（含港澳台常见城市）。飞猪、去哪儿用城市名查询；携程用已核对的城市码，覆盖国内主要通航城市。',
         inputSchema: {
           type: 'object',
           properties: {
-            app: { type: 'string', enum: FLIGHT_APPS, description: '在哪个 App 里查机票，可省略，默认携程' },
-            from_city: { type: 'string', description: '出发城市，如 西安、北京' },
-            to_city: { type: 'string', description: '到达城市，如 北京、上海' },
+            app: { type: 'string', enum: FLIGHT_APPS, description: '在哪个 App 里查机票，可省略，默认飞猪' },
+            from_city: { type: 'string', description: '出发城市，如 西安、北京、乌鲁木齐、延安' },
+            to_city: { type: 'string', description: '到达城市，如 北京、上海、喀什、义乌' },
             date: { type: 'string', description: '出发日期，YYYY-MM-DD 或 今天/明天/后天，可省略，默认明天' },
           },
           required: ['from_city', 'to_city'],
@@ -281,17 +367,21 @@
       }
       if (name === 'search_flights') {
         const appName = resolveFlightApp(args.app);
-        if (!appName) return toolText('这个 App 不支持直接查机票。支持：' + FLIGHT_APPS.join('、') + '。未指定时默认携程。', true);
+        if (!appName) return toolText('这个 App 不支持直接查机票。支持：' + FLIGHT_APPS.join('、') + '。未指定时默认飞猪。', true);
         const fields = [args.from_city, args.to_city, args.date];
         if (fields.some(v => v != null && String(v) !== '' && looksLikePayment(v)))
           return toolText('出于安全考虑，不执行与付款、转账相关的操作。', true);
         const fromCity = resolveCity(args.from_city);
         const toCity = resolveCity(args.to_city);
-        if (!fromCity || !toCity) return toolText('暂不支持这个城市。请用常见内地城市名，例如「西安」「北京」「上海」。', true);
+        if (!fromCity || !toCity) return toolText('请用中国城市名，例如「西安」「北京」「乌鲁木齐」。', true);
         const date = parseFlightDate(args.date);
         if (!date) return toolText('日期无效。请用 YYYY-MM-DD，或今天、明天、后天。', true);
         const url = flightSearchURL(appName, fromCity, toCity, date);
-        if (!url) return toolText('无法生成机票查询链接。', true);
+        if (!url) {
+          if (appName === '携程' && (!fromCity.code || !toCity.code))
+            return toolText('这个城市携程还没有对应城市码，请改用飞猪或去哪儿查询。', true);
+          return toolText('无法生成机票查询链接。', true);
+        }
         const summary = '在' + appName + '查询' + fromCity.name + '到' + toCity.name + '（' + date + '）的机票';
         return run(url, summary, { name: appName }, '', url);
       }
@@ -357,7 +447,7 @@
   }
 
   const PHONE_TOOL_NAMES = toolDefinitions().map(t => t.name);
-  const api = { APPS, SEARCHABLE, NAV_MODES, FLIGHT_APPS, DEFAULT_FLIGHT_APP, CITY_CODES, PHONE_TOOL_NAMES, resolveApp, searchURL, navigateURL, homeURL, webURL, toolDefinitions, createHandler,
-                resolveCity, resolveFlightApp, parseFlightDate, shanghaiTodayYmd, addDaysYmd, flightSearchURL, isSafeKeyword, looksLikePayment, validateEndpoint, maskEndpoint };
+  const api = { APPS, SEARCHABLE, NAV_MODES, FLIGHT_APPS, DEFAULT_FLIGHT_APP, CITY_CODES, CITY_ALIASES, PHONE_TOOL_NAMES, resolveApp, searchURL, navigateURL, homeURL, webURL, toolDefinitions, createHandler,
+                resolveCity, isPlausibleCityName, resolveFlightApp, parseFlightDate, shanghaiTodayYmd, addDaysYmd, flightSearchURL, isSafeKeyword, looksLikePayment, validateEndpoint, maskEndpoint };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PhoneLinkMCP = api;
 })(typeof self !== 'undefined' ? self : this);

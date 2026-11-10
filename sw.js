@@ -1,5 +1,5 @@
 /* 只缓存本页静态文件，方便离线打开界面；不碰 WebSocket，不缓存任何 token */
-const CACHE = 'phonelink-v6';
+const CACHE = 'phonelink-v7';
 const FILES = ['./', 'index.html', 'app.js', 'mcp.js', 'notes.js', 'videos.js', 'homeadmin.js', 'hub.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

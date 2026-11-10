@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="小智直连">
 <meta name="theme-color" content="#111827">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' wss: ws://127.0.0.1:* ws://localhost:*; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' wss: ws://127.0.0.1:* ws://localhost:* https://*.ap-guangzhou.tencentscf.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'">
 <meta name="referrer" content="no-referrer">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -26,7 +26,9 @@
   .dot.on { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.off { background:var(--bad); }
   button, .btn { appearance:none; border:0; border-radius:10px; padding:10px 14px; font-size:16px; background:#374151; color:var(--fg); text-decoration:none; display:inline-block; }
   button.primary { background:#2563eb; } button.danger { background:#7f1d1d; }
-  textarea { width:100%; min-height:70px; border-radius:10px; border:1px solid #374151; background:#0b1220; color:var(--fg); padding:8px; font:13px ui-monospace, monospace; }
+  button:disabled { opacity:.6; }
+  input[type="text"], input[type="password"], textarea { width:100%; border-radius:10px; border:1px solid #374151; background:#0b1220; color:var(--fg); padding:10px 8px; font:16px/1.4 -apple-system, "PingFang SC", sans-serif; }
+  textarea { min-height:70px; font:13px ui-monospace, monospace; }
   .mut { color:var(--mut); font-size:13px; }
   .warn { color:#fbbf24; font-size:13px; }
   #openBox { display:none; text-align:center; }
@@ -37,6 +39,16 @@
   #log { font:12px/1.45 ui-monospace, monospace; max-height:38vh; overflow:auto; white-space:pre-wrap; word-break:break-all; }
   label { display:flex; gap:8px; align-items:center; margin:6px 0; }
   details summary { cursor:pointer; }
+  #notesSearchBtn { width:100%; font-weight:700; }
+  #notesResult { display:none; border:2px solid #2563eb; }
+  #notesResult.lit { display:block; }
+  .notes-h { font-size:16px; margin:14px 0 6px; }
+  .notes-list { margin:0; padding-left:1.2em; }
+  .notes-list li { margin:0 0 10px; }
+  .notes-src { margin:0; padding-left:1.2em; font-size:13px; }
+  .notes-src a, .notes-list a { color:#93c5fd; }
+  .notes-pre { white-space:pre-wrap; word-break:break-word; font:14px/1.55 -apple-system, "PingFang SC", sans-serif; margin:0; }
+  .hist-item { display:block; width:100%; text-align:left; margin:6px 0; background:#0b1220; }
 </style>
 </head>
 <body>
@@ -50,6 +62,33 @@
     <button class="primary" id="connectBtn">连接</button>
     <button id="disconnectBtn">断开</button>
   </div>
+</div>
+
+<div class="card">
+  <b>术后注意事项</b>
+  <p class="mut">不用连接小智，直接在下面输入手术或项目名称查询。结果来自白名单专业网站，全文显示在本页，可复制或分享。</p>
+  <div class="mut" id="notesCfgShow">云函数：未配置（先填设置再查询）</div>
+  <input id="notesInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：泪沟填充、双眼皮、隆鼻" style="margin:8px 0">
+  <button class="primary" id="notesSearchBtn">查询术后注意事项</button>
+  <p class="mut" id="notesHint" style="margin:8px 0 0">先在「医美助手设置」里填写云函数地址和访问码。</p>
+</div>
+
+<div class="card" id="notesResult" aria-live="polite">
+  <b id="notesResultTitle">术后注意事项</b>
+  <div id="notesResultBody" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:12px">
+    <button class="primary" id="notesCopyBtn">复制</button>
+    <button id="notesShareBtn">分享</button>
+    <button id="notesCloseBtn">关闭</button>
+  </div>
+</div>
+
+<div class="card">
+  <details>
+    <summary><b>查询记录（只存在本机）</b></summary>
+    <div id="notesHistList" class="mut" style="margin-top:8px">还没有查询记录。</div>
+    <button id="notesClearHistBtn" style="margin-top:8px">清空记录</button>
+  </details>
 </div>
 
 <div class="card" id="openBox" aria-live="assertive">
@@ -67,7 +106,7 @@
 <div class="card">
   <details id="setup">
     <summary><b>设置小智 MCP 接入点</b></summary>
-    <p class="mut">在 xiaozhi.me 控制台 → 智能体 → MCP 接入点，复制 <code>wss://api.xiaozhi.me/mcp/?token=…</code> 整行粘贴到这里。</p>
+    <p class="mut">在 xiaozhi.me 控制台 → 智能体 → MCP 接入点，复制 <code>wss://api.xiaozhi.me/mcp/?token=…</code> 整行粘贴到这里。查询术后注意事项不需要这一步。</p>
     <textarea id="endpointInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="wss://api.xiaozhi.me/mcp/?token=..."></textarea>
     <label><input type="checkbox" id="remember" checked> 记住在这台手机上（localStorage）</label>
     <p class="warn">⚠️ 这个 token 等于你小智智能体的工具接入权限。它只保存在这台手机的浏览器本地存储里，不会上传到托管网页的服务器；但任何能打开这台手机这个网页的人都能看到/使用它。不要截图外发；泄露后请到小智控制台重置接入点。取消“记住”则关闭页面后需重新粘贴。</p>
@@ -79,11 +118,24 @@
 </div>
 
 <div class="card">
+  <details id="notesSetup">
+    <summary><b>医美助手设置</b></summary>
+    <p class="mut">部署腾讯云云函数后，把函数 URL 和访问码填在这里。只存在本机，不会上传到 GitHub Pages。访问码不要发到聊天里。</p>
+    <p class="mut">云函数地址</p>
+    <input id="notesUrl" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…….ap-guangzhou.tencentscf.com">
+    <p class="mut">访问码</p>
+    <input id="notesCode" type="password" autocomplete="off" placeholder="部署时生成的访问码">
+    <div class="row" style="margin-top:8px"><button class="primary" id="notesSaveBtn">保存配置</button></div>
+  </details>
+</div>
+
+<div class="card">
   <details>
     <summary><b>怎么用 / 限制</b></summary>
     <ul class="mut">
+      <li>术后注意事项可直接在本页输入术式查询，不必连接小智；也可以对小智说「泪沟填充术后注意事项」，全文同样显示在本页，小智只念短摘要。</li>
       <li>对小智说「打开淘宝」「在抖音搜猫咪」「B站搜钢琴」。</li>
-      <li>本页必须<b>开着并在前台</b>：锁屏、切到别的 App 后，iOS 会暂停网页、断开连接；回到本页会自动重连。</li>
+      <li>本页必须<b>开着并在前台</b>才能接收小智指令：锁屏、切到别的 App 后，iOS 会暂停网页、断开连接；回到本页会自动重连。手动查询只要页面开着即可。</li>
       <li>Safari 打开别的 App 时可能弹出「在“淘宝”中打开？」需点“打开”；若没有自动跳转，点绿色大按钮即可。</li>
       <li>建议 Safari → 分享 → 添加到主屏幕，从主屏幕图标启动。</li>
       <li>白名单：<span id="appList"></span>。不能付款、转账或打开任意网址。</li>
@@ -97,6 +149,7 @@
 </div>
 
 <script src="mcp.js"></script>
+<script src="notes.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

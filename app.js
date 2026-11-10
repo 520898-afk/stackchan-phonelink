@@ -63,7 +63,13 @@
     return { ok: true, text: '已向手机发出「' + summary + '」。Safari 可能需要用户确认或点一下：手机屏幕上已亮起大按钮。若手机没装这个 App，则不会打开。' };
   }
 
-  const handler = M.createHandler({ launch, isForeground: () => !document.hidden, log });
+  const Notes = window.PhoneLinkNotes;
+  if (Notes && Notes.bind) Notes.bind();
+  const getProcedureNotes = procedure => {
+    if (!Notes || !Notes.getProcedureNotes) return Promise.resolve({ ok: false, text: '手机网页尚未加载医美助手。' });
+    return Notes.getProcedureNotes(procedure);
+  };
+  const handler = M.createHandler({ launch, isForeground: () => !document.hidden, log, getProcedureNotes });
 
   // ---------- WebSocket + 重连 ----------
   let ws = null, wantConnected = false, retry = 0, retryTimer = null, lastMsg = 0, watchdog = null;

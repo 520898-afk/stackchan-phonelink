@@ -97,6 +97,17 @@
           required: ['app', 'keyword'],
         },
       },
+      {
+        name: 'get_procedure_notes',
+        description: '查询某项医美或整形手术的术后注意事项，从专业医学网站检索并整理护理、饮食、活动、用药、复诊和异常就医信号。用户说「泪沟填充术后注意事项」「双眼皮术后护理」「隆鼻术后要注意什么」时调用。全文会显示在用户手机上，本工具只返回一段简短摘要供口述。不要用本工具查询术前准备或其他无关内容。不要求用户先做任何操作以外的确认。',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            procedure: { type: 'string', description: '手术或项目名称，如 泪沟填充、双眼皮、隆鼻，1–40个字' },
+          },
+          required: ['procedure'],
+        },
+      },
     ];
   }
 
@@ -105,6 +116,7 @@
    *   launch(url, summary, app) -> Promise<{ok:boolean, text:string}>   // 网页里真正打开（或亮起按钮）
    *   isForeground() -> boolean
    *   log(line)
+   *   getProcedureNotes(procedure) -> Promise<{ok:boolean, text:string}>
    * }
    */
   function createHandler(env) {
@@ -128,6 +140,12 @@
         const url = searchURL(app, kw);
         if (!url) return toolText('搜索关键词无效（需要 1–40 个普通文字）。', true);
         return run(url, '在' + app.name + '搜索「' + kw + '」', app, kw);
+      }
+      if (name === 'get_procedure_notes') {
+        const procedure = String(args.procedure || '').trim();
+        if (!env.getProcedureNotes) return toolText('手机网页尚未配置医美助手。', true);
+        if (!procedure) return toolText('请提供手术或项目名称，例如「泪沟填充」。', true);
+        return env.getProcedureNotes(procedure).then(r => toolText(r.text, !r.ok));
       }
       return toolText('未知工具：' + name, true);
     }

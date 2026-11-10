@@ -256,8 +256,10 @@
       case '去哪儿':
         return 'https://m.flight.qunar.com/ncs/page/flightlist?depCity=' + dep + '&arrCity=' + arr + '&goDate=' + date;
       case '飞猪':
-        // tripType=0 单程（1 为往返）；服务端会把单程转到 homeow/trip_flight_search.htm，参数保留
-        return 'https://sjipiao.fliggy.com/flight_search_result.htm?tripType=0&depCity=' + dep + '&arrCity=' + arr + '&depDate=' + date;
+        // 飞猪只认城市三字码（如 SIA、BJS），传中文名会报「入参校验失败」；无码城市返回 null，由调用方改用去哪儿
+        // tripType=0 单程；服务端会转到 homeow/trip_flight_search.htm（港澳台等转国际页），参数保留
+        if (!fromCity.code || !toCity.code) return null;
+        return 'https://sjipiao.fliggy.com/flight_search_result.htm?tripType=0&depCity=' + fromCity.code + '&arrCity=' + toCity.code + '&depDate=' + date;
       default:
         return null;
     }
@@ -300,7 +302,7 @@
       {
         name: 'search_flights',
         description: '查询单程机票并打开结果页。用户说「查机票」「买机票」「搜航班」「携程查西安到北京的机票」「飞猪搜上海飞广州明天的机票」时调用。支持：' +
-          FLIGHT_APPS.join('、') + '。若用户没有指定 App，默认使用飞猪。必须直接调用本工具，不要先调用 open_phone_app（先打开会把直连页切到后台，查询指令就送不到手机）。只搜索航班，不预订、不付款。日期支持 YYYY-MM-DD、今天/明天/后天，缺省为明天（北京时间）。需要「小智手机直连」网页开着且在前台。支持全国城市（含港澳台常见城市）。飞猪、去哪儿用城市名查询；携程用已核对的城市码，覆盖国内主要通航城市。',
+          FLIGHT_APPS.join('、') + '。若用户没有指定 App，默认使用飞猪。必须直接调用本工具，不要先调用 open_phone_app（先打开会把直连页切到后台，查询指令就送不到手机）。只搜索航班，不预订、不付款。日期支持 YYYY-MM-DD、今天/明天/后天，缺省为明天（北京时间）。需要「小智手机直连」网页开着且在前台。支持全国城市（含港澳台常见城市）。去哪儿用城市名查询；飞猪、携程用已核对的城市码，覆盖国内主要通航城市，飞猪遇到没有城市码的城市会自动改用去哪儿。',
         inputSchema: {
           type: 'object',
           properties: {
@@ -376,14 +378,20 @@
         if (!fromCity || !toCity) return toolText('请用中国城市名，例如「西安」「北京」「乌鲁木齐」。', true);
         const date = parseFlightDate(args.date);
         if (!date) return toolText('日期无效。请用 YYYY-MM-DD，或今天、明天、后天。', true);
-        const url = flightSearchURL(appName, fromCity, toCity, date);
+        let usedApp = appName;
+        let note = '';
+        if (appName === '飞猪' && (!fromCity.code || !toCity.code)) {
+          usedApp = '去哪儿';
+          note = '（飞猪需要城市码，' + (!fromCity.code ? fromCity.name : toCity.name) + '暂无，已改用去哪儿）';
+        }
+        const url = flightSearchURL(usedApp, fromCity, toCity, date);
         if (!url) {
           if (appName === '携程' && (!fromCity.code || !toCity.code))
             return toolText('这个城市携程还没有对应城市码，请改用飞猪或去哪儿查询。', true);
           return toolText('无法生成机票查询链接。', true);
         }
-        const summary = '在' + appName + '查询' + fromCity.name + '到' + toCity.name + '（' + date + '）的机票';
-        return run(url, summary, { name: appName }, '', url);
+        const summary = '在' + usedApp + '查询' + fromCity.name + '到' + toCity.name + '（' + date + '）的机票' + note;
+        return run(url, summary, { name: usedApp }, '', url);
       }
       if (name === 'get_procedure_notes') {
         const procedure = String(args.procedure || '').trim();

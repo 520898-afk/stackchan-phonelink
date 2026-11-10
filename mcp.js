@@ -202,7 +202,8 @@
     } catch (e) { return '（未设置）'; }
   }
 
-  const api = { APPS, SEARCHABLE, resolveApp, searchURL, homeURL, webURL, toolDefinitions, createHandler,
+  const PHONE_TOOL_NAMES = toolDefinitions().map(t => t.name);
+  const api = { APPS, SEARCHABLE, PHONE_TOOL_NAMES, resolveApp, searchURL, homeURL, webURL, toolDefinitions, createHandler,
                 isSafeKeyword, looksLikePayment, validateEndpoint, maskEndpoint };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PhoneLinkMCP = api;
 })(typeof self !== 'undefined' ? self : this);

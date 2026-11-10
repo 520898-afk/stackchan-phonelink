@@ -82,6 +82,26 @@
     return null;
   }
 
+  const HUB_DEFAULTS = {
+    url: 'https://192.168.3.8:8443',
+    fallback: 'https://macdemacbook-air.local:8443',
+  };
+
+  function validateHubUrl(url) {
+    const raw = String(url || '').trim();
+    if (!raw) return '请填写家里电脑的汇聚地址。';
+    let u;
+    try { u = new URL(raw); }
+    catch (e) { return '地址格式不对，例如 https://192.168.3.8:8443'; }
+    if (u.protocol === 'http:') return '汇聚地址必须是 https（不能用 http，手机页面会拦截）。';
+    if (u.protocol !== 'https:') return '汇聚地址必须是 https。';
+    if (u.username || u.password) return '地址里不要带账号密码。';
+    if (!isPrivateOrLocalHost(u.hostname)) {
+      return '请填写家里电脑的局域网地址（例如 192.168.3.8）或 .local 名称。';
+    }
+    return null;
+  }
+
   function escapeHtml(s) {
     return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
@@ -121,7 +141,7 @@
     };
   }
 
-  const api = { getCfg, setCfg, joinBase, validateBase, isPrivateOrLocalHost, LINKS, DEFAULTS, bind, renderLinks };
+  const api = { getCfg, setCfg, joinBase, validateBase, validateHubUrl, isPrivateOrLocalHost, LINKS, DEFAULTS, HUB_DEFAULTS, bind, renderLinks };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else {
     root.PhoneLinkHomeAdmin = api;

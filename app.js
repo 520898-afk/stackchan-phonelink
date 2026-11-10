@@ -1,7 +1,9 @@
-/* 小智手机直连 · 页面逻辑：连接、重连、常亮、前后台、打开 App、日志 */
+/* 小智手机直连 · 页面逻辑：连接、重连、常亮、前后台、打开 App、日志、电脑汇聚 */
 (function () {
   'use strict';
   const M = window.PhoneLinkMCP;
+  const Home = window.PhoneLinkHomeAdmin;
+  const Hub = window.PhoneLinkHub;
   const $ = id => document.getElementById(id);
   const KEY = 'stackchan.phonelink.endpoint';
   const PREF = 'stackchan.phonelink.prefs';
@@ -19,11 +21,29 @@
     if (logLines.length > 200) logLines.length = 200;
     $('log').textContent = logLines.join('\n');
   }
-  function redact(s) { return String(s).replace(/token=[^&\s"]+/g, 'token=***'); }
+  function redact(s) {
+    return String(s)
+      .replace(/token=[^&\s"]+/g, 'token=***')
+      .replace(/Bearer\s+\S+/gi, 'Bearer ***')
+      .replace(/("token"\s*:\s*")[^"]*/g, '$1***');
+  }
 
   // ---------- 状态 ----------
   function setStatus(text, cls) { $('status').textContent = text; $('dot').className = 'dot ' + cls; }
   function showEndpoint() { $('endpointShow').textContent = '接入点：' + (endpoint ? M.maskEndpoint(endpoint) : '（未设置）'); }
+  function showHub() {
+    if (!$('hubShow')) return;
+    const cfg = Hub ? Hub.getCfg() : {};
+    const configured = Hub && Hub.isConfigured(cfg);
+    if (!configured) {
+      $('hubShow').textContent = '电脑汇聚：未配置（未填令牌前仍只用手机工具）';
+      return;
+    }
+    const st = hubClient ? hubClient.getState() : null;
+    if (st && st.reachable) $('hubShow').textContent = '电脑汇聚：已连接（电脑已汇聚）';
+    else if (st && st.probing) $('hubShow').textContent = '电脑汇聚：正在探测家里电脑…';
+    else $('hubShow').textContent = '电脑汇聚：不可用。' + (st && st.reason ? st.reason : '原因未知，未静默忽略。');
+  }
 
   // ---------- 打开 App ----------
   let pending = null;
@@ -71,24 +91,90 @@
   };
   const handler = M.createHandler({ launch, isForeground: () => !document.hidden, log, getProcedureNotes });
 
+  // ---------- 电脑汇聚 ----------
+  let lastHubReachable = false;
+  const hubClient = Hub ? Hub.createHubClient({
+    fetch: window.fetch.bind(window),
+    getCfg: () => Hub.getCfg(),
+    isForeground: () => !document.hidden,
+    phoneTools: () => M.toolDefinitions(),
+    callPhoneTool: (name, args) => handler.callTool(name, args),
+    log,
+    timeoutMs: 6000,
+    retries: 2,
+    onState: (st) => {
+      showHub();
+      if (st.reachable && !lastHubReachable) {
+        lastHubReachable = true;
+        closeAccessPointSocket('电脑已汇聚，已断开手机接入点，避免互挤');
+        if (wantConnected) {
+          setStatus('电脑已汇聚', 'on');
+          hubClient.ensureSidecar();
+        }
+      } else if (!st.reachable && lastHubReachable) {
+        lastHubReachable = false;
+        if (hubClient) hubClient.stopSidecar();
+        if (wantConnected) {
+          log('电脑汇聚已断开，改用仅手机工具。' + (st.reason || ''));
+          connect();
+        } else {
+          showHub();
+        }
+      } else if (st.reachable && wantConnected) {
+        setStatus('电脑已汇聚', 'on');
+        hubClient.ensureSidecar();
+      }
+    },
+  }) : null;
+
+  function hubConfigured() { return !!(Hub && Hub.isConfigured(Hub.getCfg())); }
+  function hubReachable() { return !!(hubClient && hubClient.isReachable()); }
+
+  function fillHubForm() {
+    if (!Hub) return;
+    const cfg = Hub.getCfg();
+    if ($('hubUrl')) $('hubUrl').value = cfg.url || '';
+    if ($('hubFallback')) $('hubFallback').value = cfg.fallback || '';
+    if ($('hubToken')) $('hubToken').value = cfg.token ? '********' : '';
+  }
+
   // ---------- WebSocket + 重连 ----------
   let ws = null, wantConnected = false, retry = 0, retryTimer = null, lastMsg = 0, watchdog = null;
+  function closeAccessPointSocket(reason) {
+    clearTimeout(retryTimer); retryTimer = null;
+    if (ws) { const s = ws; ws = null; try { s.close(1000, 'hub'); } catch (e) {} }
+    if (reason) log(reason);
+  }
   function connect() {
+    if (hubReachable()) {
+      wantConnected = true;
+      closeAccessPointSocket();
+      setStatus('电脑已汇聚', 'on');
+      if (hubClient) hubClient.ensureSidecar();
+      showHub();
+      return;
+    }
     const url = M.validateEndpoint(endpoint);
     if (!url) { setStatus('请先设置接入点', 'off'); $('setup').open = true; return; }
     wantConnected = true; clearTimeout(retryTimer); retryTimer = null;
     if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
-    setStatus('连接中…', 'wait');
+    setStatus(hubConfigured() ? '仅手机工具 · 连接中…' : '连接中…', 'wait');
     let sock;
     try { sock = new WebSocket(url); } catch (e) { log('无法创建连接：' + e.message); return scheduleRetry(); }
     ws = sock;
-    sock.onopen = () => { if (ws !== sock) return; retry = 0; lastMsg = Date.now(); setStatus('已连接，等待小智', 'on'); log('已连上接入点'); };
+    sock.onopen = () => {
+      if (ws !== sock) return;
+      if (hubReachable()) { try { sock.close(1000, 'hub'); } catch (e) {} return; }
+      retry = 0; lastMsg = Date.now();
+      setStatus(hubConfigured() ? '已连接 · 仅手机工具' : '已连接，等待小智', 'on');
+      log('已连上接入点');
+    };
     sock.onmessage = async ev => {
       if (ws !== sock) return;
       lastMsg = Date.now();
       let method = '?'; try { method = JSON.parse(ev.data).method || 'reply'; } catch (e) {}
       if (method !== 'ping') log('← ' + method);
-      if (method === 'tools/list') setStatus('已连接 · 工具已注册', 'on');
+      if (method === 'tools/list') setStatus(hubConfigured() ? '已连接 · 仅手机工具' : '已连接 · 工具已注册', 'on');
       const out = await handler.handle(typeof ev.data === 'string' ? ev.data : '');
       if (out && sock.readyState === 1) sock.send(out);
     };
@@ -97,11 +183,12 @@
       if (ws !== sock) return;
       ws = null;
       log('连接关闭 code=' + ev.code + (ev.reason ? ' ' + ev.reason : ''));
-      if (wantConnected) scheduleRetry(); else setStatus('未连接', 'off');
+      if (wantConnected && !hubReachable()) scheduleRetry();
+      else if (!wantConnected) setStatus('未连接', 'off');
     };
   }
   function scheduleRetry() {
-    if (!wantConnected) return;
+    if (!wantConnected || hubReachable()) return;
     if (document.hidden) { setStatus('后台已暂停，回到前台自动重连', 'wait'); return; }
     const delay = Math.min(60000, 1000 * Math.pow(2, retry)) * (0.8 + Math.random() * 0.4);
     retry = Math.min(retry + 1, 6);
@@ -110,14 +197,29 @@
   }
   function disconnect() {
     wantConnected = false; clearTimeout(retryTimer);
+    if (hubClient) hubClient.stopSidecar();
     if (ws) { const s = ws; ws = null; try { s.close(1000, 'user'); } catch (e) {} }
     setStatus('未连接', 'off'); log('已手动断开');
+    showHub();
   }
   // 看门狗：页面在前台但连接“假活着”（长时间无消息且 readyState 异常）时重建
   watchdog = setInterval(() => {
     if (!wantConnected || document.hidden) return;
+    if (hubReachable()) { if (hubClient) hubClient.ensureSidecar(); return; }
     if (!ws || ws.readyState === 3) { if (!retryTimer) connect(); }
   }, 15000);
+
+  let hubTimer = null;
+  async function hubTick(initial) {
+    if (!hubClient) return;
+    const st = await hubClient.tick({ initial: !!initial });
+    showHub();
+    return st;
+  }
+  function startHubLoop() {
+    if (!hubClient || hubTimer) return;
+    hubTimer = setInterval(() => { hubTick(false); }, 7000);
+  }
 
   // ---------- 屏幕常亮 ----------
   let wakeLock = null;
@@ -138,10 +240,14 @@
     if (document.hidden) { log('页面进入后台（iOS 会暂停网页，连接可能断开）'); return; }
     log('页面回到前台');
     acquireWake();
+    if (hubReachable()) {
+      if (wantConnected && hubClient) hubClient.ensureSidecar();
+      return;
+    }
     if (wantConnected && (!ws || ws.readyState > 1)) { retry = 0; clearTimeout(retryTimer); connect(); }
   });
-  window.addEventListener('pageshow', e => { if (e.persisted && wantConnected) { retry = 0; connect(); } });
-  window.addEventListener('online', () => { if (wantConnected) { retry = 0; clearTimeout(retryTimer); connect(); } });
+  window.addEventListener('pageshow', e => { if (e.persisted && wantConnected && !hubReachable()) { retry = 0; connect(); } });
+  window.addEventListener('online', () => { if (wantConnected && !hubReachable()) { retry = 0; clearTimeout(retryTimer); connect(); } });
 
   // ---------- UI ----------
   $('appList').textContent = M.APPS.map(a => a.name).join('、');
@@ -166,11 +272,63 @@
     disconnect(); endpoint = ''; localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); showEndpoint(); log('已清除 token');
   };
 
+  if ($('hubSaveBtn') && Hub) {
+    fillHubForm();
+    $('hubSaveBtn').onclick = () => {
+      const url = ($('hubUrl').value || '').trim();
+      const fallback = ($('hubFallback').value || '').trim();
+      const typed = ($('hubToken').value || '').trim();
+      const prev = Hub.getCfg();
+      const token = (!typed || typed === '********') ? (prev.token || '') : typed;
+      const err = Home.validateHubUrl(url) || (fallback ? Home.validateHubUrl(fallback) : null);
+      const hint = $('hubHint');
+      if (err) { if (hint) hint.textContent = err; return; }
+      if (!token) { if (hint) hint.textContent = '请填写汇聚令牌（不要发到聊天里）。'; return; }
+      Hub.setCfg({ url, fallback, token });
+      if ($('hubToken')) $('hubToken').value = '********';
+      if (hint) hint.textContent = '汇聚设置已保存。只存在本机，不会上传到 GitHub Pages。';
+      log('已保存电脑汇聚地址');
+      lastHubReachable = hubReachable();
+      hubTick(true).then(() => { if (wantConnected && !hubReachable() && endpoint) connect(); });
+    };
+    if ($('hubClearBtn')) $('hubClearBtn').onclick = () => {
+      if (!confirm('确定清除本机保存的汇聚令牌和地址？')) return;
+      Hub.clearCfg();
+      fillHubForm();
+      lastHubReachable = false;
+      if (hubClient) hubClient.stopSidecar();
+      showHub();
+      log('已清除电脑汇聚设置');
+      if (wantConnected && endpoint) connect();
+    };
+  }
+
   showEndpoint();
-  if (endpoint) connect(); else $('setup').open = true;
+  showHub();
+  startHubLoop();
+  const boot = () => {
+    if (endpoint && hubConfigured() && hubClient) {
+      wantConnected = true;
+      setStatus('正在探测家里电脑…', 'wait');
+      hubTick(true).then((st) => {
+        if (hubReachable()) {
+          setStatus('电脑已汇聚', 'on');
+          hubClient.ensureSidecar();
+        } else if (wantConnected) {
+          log('电脑汇聚不可用，改用仅手机工具。' + ((st && st.reason) || ''));
+          connect();
+        }
+      });
+    } else if (endpoint) {
+      connect();
+    } else {
+      $('setup').open = true;
+    }
+  };
+  boot();
   acquireWake();
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 
   // 测试钩子（只读状态）
-  window.__phonelink = { get state() { return { wsState: ws ? ws.readyState : -1, pending, wantConnected, retry, wake: !!wakeLock }; } };
+  window.__phonelink = { get state() { return { wsState: ws ? ws.readyState : -1, pending, wantConnected, retry, wake: !!wakeLock, hub: hubClient ? hubClient.getState() : null }; } };
 })();

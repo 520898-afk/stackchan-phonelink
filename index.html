@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小智直连">
+<meta name="theme-color" content="#111827">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' wss: ws://127.0.0.1:* ws://localhost:*; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; manifest-src 'self'; worker-src 'self'">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>小智手机直连</title>
+<style>
+  :root { color-scheme: dark; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --bg:#111827; --card:#1f2937; --fg:#f9fafb; --mut:#9ca3af; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 -apple-system, "PingFang SC", sans-serif; background:var(--bg); color:var(--fg);
+         padding: env(safe-area-inset-top) 14px calc(env(safe-area-inset-bottom) + 14px); }
+  h1 { font-size:20px; margin:14px 0 8px; }
+  .card { background:var(--card); border-radius:14px; padding:14px; margin:10px 0; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .dot { width:12px; height:12px; border-radius:50%; background:var(--mut); display:inline-block; }
+  .dot.on { background:var(--ok); } .dot.wait { background:var(--warn); } .dot.off { background:var(--bad); }
+  button, .btn { appearance:none; border:0; border-radius:10px; padding:10px 14px; font-size:16px; background:#374151; color:var(--fg); text-decoration:none; display:inline-block; }
+  button.primary { background:#2563eb; } button.danger { background:#7f1d1d; }
+  textarea { width:100%; min-height:70px; border-radius:10px; border:1px solid #374151; background:#0b1220; color:var(--fg); padding:8px; font:13px ui-monospace, monospace; }
+  .mut { color:var(--mut); font-size:13px; }
+  .warn { color:#fbbf24; font-size:13px; }
+  #openBox { display:none; text-align:center; }
+  #openBox.lit { display:block; animation: glow 1.2s ease-in-out infinite alternate; border:2px solid var(--ok); }
+  @keyframes glow { from { box-shadow:0 0 0 rgba(34,197,94,0); } to { box-shadow:0 0 28px rgba(34,197,94,.7); } }
+  #openBtn { display:block; width:100%; padding:28px 10px; font-size:26px; font-weight:700; background:var(--ok); color:#052e16; border-radius:16px; }
+  #webBtn { margin-top:10px; }
+  #log { font:12px/1.45 ui-monospace, monospace; max-height:38vh; overflow:auto; white-space:pre-wrap; word-break:break-all; }
+  label { display:flex; gap:8px; align-items:center; margin:6px 0; }
+  details summary { cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>🤖 小智手机直连</h1>
+
+<div class="card">
+  <div class="row"><span id="dot" class="dot off"></span><b id="status">未连接</b></div>
+  <div class="mut" id="endpointShow">接入点：（未设置）</div>
+  <div class="mut" id="wakeShow">屏幕常亮：未开启</div>
+  <div class="row" style="margin-top:8px">
+    <button class="primary" id="connectBtn">连接</button>
+    <button id="disconnectBtn">断开</button>
+  </div>
+</div>
+
+<div class="card" id="openBox" aria-live="assertive">
+  <div class="mut" id="openHint">小智请求：</div>
+  <a id="openBtn" href="#" rel="noreferrer">打开</a>
+  <a id="webBtn" class="btn" href="#" target="_blank" rel="noreferrer">打不开？用网页版试试（京东/B站/抖音首页可能直接跳 App）</a>
+  <div><button id="dismissBtn" style="margin-top:10px">取消</button></div>
+</div>
+
+<div class="card">
+  <label><input type="checkbox" id="autoOpen" checked> 收到指令时先尝试自动打开（被拦截时点上面的大按钮）</label>
+  <label><input type="checkbox" id="keepAwake" checked> 保持屏幕常亮（页面需在前台）</label>
+</div>
+
+<div class="card">
+  <details id="setup">
+    <summary><b>设置小智 MCP 接入点</b></summary>
+    <p class="mut">在 xiaozhi.me 控制台 → 智能体 → MCP 接入点，复制 <code>wss://api.xiaozhi.me/mcp/?token=…</code> 整行粘贴到这里。</p>
+    <textarea id="endpointInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="wss://api.xiaozhi.me/mcp/?token=..."></textarea>
+    <label><input type="checkbox" id="remember" checked> 记住在这台手机上（localStorage）</label>
+    <p class="warn">⚠️ 这个 token 等于你小智智能体的工具接入权限。它只保存在这台手机的浏览器本地存储里，不会上传到托管网页的服务器；但任何能打开这台手机这个网页的人都能看到/使用它。不要截图外发；泄露后请到小智控制台重置接入点。取消“记住”则关闭页面后需重新粘贴。</p>
+    <div class="row">
+      <button class="primary" id="saveBtn">保存并连接</button>
+      <button class="danger" id="clearBtn">清除 token</button>
+    </div>
+  </details>
+</div>
+
+<div class="card">
+  <details>
+    <summary><b>怎么用 / 限制</b></summary>
+    <ul class="mut">
+      <li>对小智说「打开淘宝」「在抖音搜猫咪」「B站搜钢琴」。</li>
+      <li>本页必须<b>开着并在前台</b>：锁屏、切到别的 App 后，iOS 会暂停网页、断开连接；回到本页会自动重连。</li>
+      <li>Safari 打开别的 App 时可能弹出「在“淘宝”中打开？」需点“打开”；若没有自动跳转，点绿色大按钮即可。</li>
+      <li>建议 Safari → 分享 → 添加到主屏幕，从主屏幕图标启动。</li>
+      <li>白名单：<span id="appList"></span>。不能付款、转账或打开任意网址。</li>
+    </ul>
+  </details>
+</div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between"><b>指令日志</b><button id="clearLogBtn">清空</button></div>
+  <div id="log"></div>
+</div>
+
+<script src="mcp.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

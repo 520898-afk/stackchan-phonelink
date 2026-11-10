@@ -49,6 +49,16 @@
   .notes-src a, .notes-list a { color:#93c5fd; }
   .notes-pre { white-space:pre-wrap; word-break:break-word; font:14px/1.55 -apple-system, "PingFang SC", sans-serif; margin:0; }
   .hist-item { display:block; width:100%; text-align:left; margin:6px 0; background:#0b1220; }
+
+  #vidSearchBtn { width:100%; font-weight:700; }
+  #vidResult { display:none; border:2px solid #0d9488; }
+  #vidResult.lit { display:block; }
+  .vid-list { margin:0; padding-left:1.2em; }
+  .vid-list li { margin:0 0 12px; }
+  .vid-title a { color:#5eead4; }
+  .home-link { margin:10px 0; }
+  .home-link .btn { margin-right:8px; }
+  .home-grid { display:flex; flex-direction:column; gap:4px; }
 </style>
 </head>
 <body>
@@ -91,6 +101,47 @@
   </details>
 </div>
 
+<div class="card">
+  <b>专业手术视频</b>
+  <p class="mut">不用连接小智，输入手术名称，从专业网站检索教学或手术演示视频的公开链接。只给链接，不下载、不转存。使用上面「医美助手设置」里同一组云函数地址和访问码。</p>
+  <input id="vidInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：双眼皮、眼袋、提眉、隆鼻、吸脂" style="margin:8px 0">
+  <button class="primary" id="vidSearchBtn">查询专业手术视频</button>
+  <p class="mut" id="vidHint" style="margin:8px 0 0">先在「医美助手设置」里填写云函数地址和访问码。</p>
+</div>
+
+<div class="card" id="vidResult" aria-live="polite">
+  <b id="vidResultTitle">专业手术视频</b>
+  <div id="vidResultBody" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:12px">
+    <button class="primary" id="vidCopyBtn">复制</button>
+    <button id="vidCloseBtn">关闭</button>
+  </div>
+</div>
+
+<div class="card">
+  <details>
+    <summary><b>视频查询记录（只存在本机）</b></summary>
+    <div id="vidHistList" class="mut" style="margin-top:8px">还没有查询记录。</div>
+    <button id="vidClearHistBtn" style="margin-top:8px">清空记录</button>
+  </details>
+</div>
+
+<div class="card">
+  <b>家里电脑后台</b>
+  <p class="mut">这些入口只在家里、手机和电脑连同一 Wi-Fi、电脑开着且已登录时可用。打开后会提示 HTTP 基本认证（后台原来的账号密码）。出了家门或电脑合盖就连不上。不含「控制小智」。本地视频页要等移动硬盘接上并开通后台页以后才能用。</p>
+  <div id="homeAdminLinks" class="home-grid" style="margin-top:8px"></div>
+  <details style="margin-top:10px">
+    <summary><b>家里电脑地址</b></summary>
+    <p class="mut">默认是家里这台 Mac 的局域网地址。换了网或 IP 变了，可在这里改。</p>
+    <p class="mut">首选地址</p>
+    <input id="homeAdminBase" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://192.168.3.8:8000">
+    <p class="mut">备用地址（.local）</p>
+    <input id="homeAdminFallback" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://macdemacbook-air.local:8000">
+    <div class="row" style="margin-top:8px"><button class="primary" id="homeAdminSaveBtn">保存地址</button></div>
+    <p class="mut" id="homeAdminHint" style="margin:8px 0 0"></p>
+  </details>
+</div>
+
 <div class="card" id="openBox" aria-live="assertive">
   <div class="mut" id="openHint">小智请求：</div>
   <a id="openBtn" href="#" rel="noreferrer">打开</a>
@@ -120,7 +171,7 @@
 <div class="card">
   <details id="notesSetup">
     <summary><b>医美助手设置</b></summary>
-    <p class="mut">部署腾讯云云函数后，把函数 URL 和访问码填在这里。只存在本机，不会上传到 GitHub Pages。访问码不要发到聊天里。</p>
+    <p class="mut">部署腾讯云云函数后，把函数 URL 和访问码填在这里。「术后注意事项」和「专业手术视频」共用这一组配置。只存在本机，不会上传到 GitHub Pages。访问码不要发到聊天里。</p>
     <p class="mut">云函数地址</p>
     <input id="notesUrl" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…….ap-guangzhou.tencentscf.com">
     <p class="mut">访问码</p>
@@ -134,6 +185,8 @@
     <summary><b>怎么用 / 限制</b></summary>
     <ul class="mut">
       <li>术后注意事项可直接在本页输入术式查询，不必连接小智；也可以对小智说「泪沟填充术后注意事项」，全文同样显示在本页，小智只念短摘要。</li>
+      <li>专业手术视频同样在本页直接查询，只列出专业来源的公开链接，不会下载或转存。有的课程要登录或付费；YouTube 链接在国内可能打不开。</li>
+      <li>「家里电脑后台」可打开工作台、知识库、医学检索、题库和后台总览。必须在家、连同一 Wi-Fi、电脑开着。没有「控制小智」入口。本地视频入口要等硬盘接上后再用。</li>
       <li>对小智说「打开淘宝」「在抖音搜猫咪」「B站搜钢琴」。</li>
       <li>本页必须<b>开着并在前台</b>才能接收小智指令：锁屏、切到别的 App 后，iOS 会暂停网页、断开连接；回到本页会自动重连。手动查询只要页面开着即可。</li>
       <li>Safari 打开别的 App 时可能弹出「在“淘宝”中打开？」需点“打开”；若没有自动跳转，点绿色大按钮即可。</li>
@@ -150,6 +203,8 @@
 
 <script src="mcp.js"></script>
 <script src="notes.js"></script>
+<script src="videos.js"></script>
+<script src="homeadmin.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

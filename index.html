@@ -103,22 +103,22 @@
 </div>
 
 <div class="card">
-  <b>手术记录（手术步骤）</b>
-  <p class="mut">输入术式，从专业网站和医生科普平台整理手术步骤（麻醉、设计、切口、操作、缝合、包扎），再查本地知识库。不含病人信息，每条标来源，仅供医师整理参考。</p>
+  <b>手术记录</b>
+  <p class="mut">输入术式，出示成稿库里的整份手术记录，可直接复制。请按本院情况核对后使用。来源和提示在正文下方，不会进入一键复制。</p>
   <input id="recInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：双眼皮、假体隆胸" style="margin:8px 0">
-  <button class="primary" id="recSearchBtn">整理手术步骤</button>
+  <button class="primary" id="recSearchBtn">查找手术记录</button>
 </div>
 
 <div class="card">
-  <b>知情同意书风险条款</b>
-  <p class="mut">按术式或注射项目整理风险条款（一般风险、特有风险、严重并发症、效果不确定性等），每条标来源。不能直接作为法律文书，须按本院模板审核。</p>
+  <b>知情同意书</b>
+  <p class="mut">输入术式或注射项目，出示成稿库里的整份知情同意书，可直接复制。请按本院情况核对后使用。来源和提示在正文下方，不会进入一键复制。没有完整成稿的术式会明确提示，不会自动生成条款。</p>
   <div class="row" style="margin-top:6px">
     <label><input type="radio" name="consentType" value="consent" checked> 自动判断</label>
     <label><input type="radio" name="consentType" value="consent_surgery"> 手术</label>
     <label><input type="radio" name="consentType" value="consent_injection"> 注射</label>
   </div>
   <input id="consentInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：双眼皮、假体隆胸、玻尿酸、肉毒素、童颜针、水光" style="margin:8px 0">
-  <button class="primary" id="consentSearchBtn">整理风险条款</button>
+  <button class="primary" id="consentSearchBtn">查找知情同意书</button>
   <p class="mut" id="recHint" style="margin:8px 0 0">使用上面「医美助手设置」里同一组云函数地址和访问码。</p>
 </div>
 

@@ -1,4 +1,4 @@
-/* 手术记录（手术步骤）/ 知情同意书风险条款：先网络后本地知识库；手机本地保存，电脑在线时自动同步一份 .md 到电脑。 */
+/* 手术记录 / 知情同意书：默认出示成稿库整份可复制正文；来源和提示不进复制。手机本地保存，电脑在线时自动同步一份到电脑。 */
 (function (root) {
   'use strict';
 
@@ -13,9 +13,9 @@
   const SYNC_MIN_INTERVAL_MS = 30000;
   const SYNC_TOOL = 'save_medical_doc';
   const KIND_TITLES = {
-    op_record: '手术记录（手术步骤）',
-    consent_surgery: '知情同意书风险条款（手术）',
-    consent_injection: '知情同意书风险条款（注射）',
+    op_record: '手术记录',
+    consent_surgery: '知情同意书',
+    consent_injection: '知情同意书',
   };
   const DEFAULT_ORDER = {
     op_record: ['术式', '流程', '麻醉', '设计', '切口', '操作', '缝合', '包扎'],
@@ -73,7 +73,32 @@
     return out;
   }
 
+  function usableVariants(data) {
+    return (data && data.variants ? data.variants : []).filter(function (v) {
+      return v && v.usable !== false && !v.not_for_mainland_use;
+    });
+  }
+
+  function copyBody(data, index) {
+    if (!data) return '';
+    if (data.mode === 'unavailable') return (data.message || '暂无完整成稿') + '\n';
+    if (data.mode === 'library') {
+      const vars = usableVariants(data);
+      const idx = (typeof index === 'number' && index >= 0) ? index : (data.selected_index || 0);
+      const v = vars[idx] || vars[0];
+      let body = ((v && v.body) || data.body || '');
+      // 文首提示应由接口去掉；再兜底去掉行首【提示】，避免复制进正文。
+      body = body.replace(/^(?:[ \t]*【提示】[^\n]*\n)+/g, '').trim();
+      if (!body) return '';
+      return body.endsWith('\n') ? body : body + '\n';
+    }
+    return '';
+  }
+
   function toMarkdown(data, createdAt) {
+    if (data && (data.mode === 'library' || data.mode === 'unavailable')) {
+      return copyBody(data, data.selected_index);
+    }
     const kind = data.doc_type || data.action;
     const lines = ['# ' + (data.procedure || '') + ' · ' + (KIND_TITLES[kind] || '医疗文书'), ''];
     if (createdAt) lines.push('整理时间：' + new Date(createdAt).toLocaleString('zh-CN', { hour12: false }), '');
@@ -101,7 +126,71 @@
     return lines.concat(localLines(data.local)).join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
   }
 
+  function renderMeta(notices, sources) {
+    const n = notices || [];
+    const s = sources || [];
+    if (!n.length && !s.length) return '';
+    let html = '<details class="rec-meta"><summary>来源 / 提示</summary>';
+    if (n.length) {
+      html += '<ul class="notes-list">';
+      n.forEach(function (t) { html += '<li>' + escapeHtml(t) + '</li>'; });
+      html += '</ul>';
+    }
+    if (s.length) {
+      html += '<ol class="notes-src">';
+      s.forEach(function (src) {
+        const label = escapeHtml((src.name || src.source_name || '（无标题）') + (src.year ? '（' + src.year + '）' : '') + (src.source_name && src.name !== src.source_name ? ' — ' + src.source_name : ''));
+        html += src.url
+          ? '<li><a href="' + escapeHtml(src.url) + '" target="_blank" rel="noreferrer">' + label + '</a></li>'
+          : '<li>' + label + '</li>';
+      });
+      html += '</ol>';
+    }
+    html += '</details>';
+    return html;
+  }
+
+  function renderLibraryHtml(data) {
+    let html = '';
+    if (data.disclaimer) html += '<p class="mut">' + escapeHtml(data.disclaimer) + '</p>';
+    if (data.mode === 'unavailable') {
+      html += '<p>' + escapeHtml(data.message || '暂无完整成稿') + '</p>';
+      const refs = data.reference_only || [];
+      if (refs.length) {
+        html += '<details class="rec-meta"><summary>仅供对照（不能直接给大陆美容就医者使用）</summary>';
+        refs.forEach(function (v) {
+          html += '<h3 class="notes-h">' + escapeHtml(v.title || '') + '</h3>';
+          if (v.notices && v.notices.length) html += '<p class="warn">' + escapeHtml(v.notices.join(' ')) + '</p>';
+          html += '<pre class="notes-pre">' + escapeHtml(v.body || '') + '</pre>';
+        });
+        html += '</details>';
+      }
+      return html;
+    }
+    const vars = usableVariants(data);
+    const idx = data.selected_index || 0;
+    const current = vars[idx] || vars[0] || { body: data.body || '', title: '', notices: data.notices, sources: data.sources };
+    if (vars.length > 1) {
+      html += '<div class="row" style="flex-wrap:wrap;margin:8px 0">';
+      vars.forEach(function (v, i) {
+        html += '<button type="button" data-variant="' + i + '"' + (i === idx ? ' class="primary"' : '') + '>' + escapeHtml(v.title || ('成稿 ' + (i + 1))) + '</button> ';
+      });
+      html += '</div>';
+    } else if (current.title) {
+      html += '<h3 class="notes-h">' + escapeHtml(current.title) + '</h3>';
+    }
+    html += '<pre class="notes-pre">' + escapeHtml(current.body || '') + '</pre>';
+    if (vars.length > 1) {
+      html += '<p style="margin-top:8px"><button type="button" data-copy-variant="' + idx + '">复制这份</button></p>';
+    }
+    html += renderMeta(current.notices || data.notices, current.sources || data.sources);
+    return html;
+  }
+
   function renderHtml(data) {
+    if (data && (data.mode === 'library' || data.mode === 'unavailable')) {
+      return renderLibraryHtml(data);
+    }
     let html = '';
     if (data.disclaimer) html += '<p class="warn">' + escapeHtml(data.disclaimer) + '</p>';
     if (!data.ok && (data.message || data.error)) html += '<p>' + escapeHtml(data.message || data.error) + '</p>';
@@ -303,6 +392,8 @@
     const box = $('recResult');
     if (!box) return;
     const kind = data.doc_type || data.action;
+    const selected = (opts.selected_index != null) ? opts.selected_index : (data.selected_index || 0);
+    data = Object.assign({}, data, { selected_index: selected });
     $('recResultTitle').textContent = '「' + (data.procedure || '') + '」' + (KIND_TITLES[kind] || '') + (opts.fromSaved ? '（已保存）' : '');
     $('recResultBody').innerHTML = renderHtml(data);
     box.style.display = 'block';
@@ -338,12 +429,17 @@
   async function run(procedure, action) {
     const v = Notes.validateProcedure ? Notes.validateProcedure(procedure) : { ok: !!procedure, procedure: procedure };
     if (!v.ok) { setHint(v.error); return null; }
-    setHint('正在专业网站检索「' + v.procedure + '」…');
+    setHint('正在查找「' + v.procedure + '」的成稿…');
     let data;
     try { data = await query(v.procedure, action); } catch (e) { data = { ok: false, procedure: v.procedure, error: '网络异常，请稍后重试。' }; }
     if (!data.doc_type && !data.action) data.action = action === 'op_record' ? 'op_record' : (action === 'consent_injection' ? 'consent_injection' : 'consent_surgery');
     showResult(data);
     if (data.offline_config) { setHint(data.error); return data; }
+    // 成稿库命中或明确暂无成稿时，不再查本地知识库，以免把摘录写进可复制正文。
+    if (data.mode === 'library' || data.mode === 'unavailable') {
+      setHint(data.mode === 'library' ? '请按本院情况核对后使用。可直接复制正文。' : (data.message || '暂无完整成稿'));
+      return data;
+    }
     setHint('网络结果已显示，正在查本地知识库…');
     try { data.local = Notes.searchLocal ? await Notes.searchLocal(data) : null; } catch (e) { data.local = { available: false, reason: '连接家里电脑失败。', items: [] }; }
     showResult(data, { scroll: false });
@@ -404,6 +500,24 @@
       setHint('已导出 .md 文件（iPhone 上在「文件」App 里）。');
     };
     if ($('recCloseBtn')) $('recCloseBtn').onclick = () => { const b = $('recResult'); if (b) { b.style.display = 'none'; b.classList.remove('lit'); } };
+    const recBody = $('recResultBody');
+    if (recBody && !recBody.dataset.recBound) {
+      recBody.dataset.recBound = '1';
+      recBody.addEventListener('click', async ev => {
+        const pick = ev.target.closest('[data-variant]');
+        if (pick && current && current.data) {
+          showResult(current.data, { selected_index: Number(pick.getAttribute('data-variant')), scroll: false });
+          return;
+        }
+        const one = ev.target.closest('[data-copy-variant]');
+        if (one && current && current.data) {
+          const md = copyBody(current.data, Number(one.getAttribute('data-copy-variant')));
+          let ok = false;
+          try { if (root.navigator && root.navigator.clipboard) { await root.navigator.clipboard.writeText(md); ok = true; } } catch (e) {}
+          setHint(ok ? '已复制这份正文。' : '复制失败，请长按全文手动复制。');
+        }
+      });
+    }
     if ($('recSyncBtn')) $('recSyncBtn').onclick = async () => {
       const s = await syncPending({ force: true });
       if ($('recSyncShow')) $('recSyncShow').textContent = s.ok ? ('同步完成：本次 ' + s.synced + ' 份。') : ('这次没同步：' + s.reason);
@@ -432,7 +546,7 @@
   }
 
   const api = {
-    MAX_DOCS, SYNC_TOOL, KIND_TITLES, query, toMarkdown, renderHtml, saveDoc, listDocs, prune, syncPending,
+    MAX_DOCS, SYNC_TOOL, KIND_TITLES, query, toMarkdown, renderHtml, copyBody, usableVariants, saveDoc, listDocs, prune, syncPending,
     setCallTool, setStore, lsStore, parseSaveResult, newId, bind, run, onHubReachable,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

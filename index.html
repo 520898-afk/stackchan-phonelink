@@ -145,6 +145,24 @@
 </div>
 
 <div class="card">
+  <b>医美新知</b>
+  <p class="mut">工作日上午会自动检索。点「存到手机」先留在这台手机上；回家后电脑开机、汇聚服务在线、并且本页在前台时，再同步到电脑的医美新知文件夹。不会自动放进知识库。</p>
+  <div id="digestToday" style="margin-top:8px"></div>
+  <details style="margin-top:10px">
+    <summary><b>手动添加一条</b></summary>
+    <p class="mut">聊天里看到需要的，可以把标题和原文链接填在这里。</p>
+    <input id="digestTitle" type="text" maxlength="80" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="标题">
+    <input id="digestUrl" type="url" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="原文链接（选填）">
+    <input id="digestNote" type="text" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="一句话要点（选填）">
+    <div class="row" style="margin-top:8px"><button class="primary" id="digestAddBtn">存到手机</button></div>
+  </details>
+  <p class="mut" style="margin-top:10px"><b>已存到本机</b></p>
+  <div id="digestSaved" class="mut">还没有存到本机的新知。</div>
+  <button id="digestSyncBtn" style="margin-top:8px">立即同步到电脑</button>
+  <p class="mut" id="digestHint" style="margin:8px 0 0"></p>
+</div>
+
+<div class="card">
   <b>专业手术视频</b>
   <p class="mut">不用连接小智，输入手术名称，从专业网站检索教学或手术演示视频的公开链接。只给链接，不下载、不转存。使用上面「医美助手设置」里同一组云函数地址和访问码。</p>
   <input id="vidInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：双眼皮、眼袋、提眉、隆鼻、吸脂" style="margin:8px 0">
@@ -242,7 +260,8 @@
     <ul class="mut">
       <li>术后注意事项可直接在本页输入术式查询，不必连接小智；也可以对小智说「泪沟填充术后注意事项」，全文同样显示在本页，小智只念短摘要。</li>
       <li>专业手术视频同样在本页直接查询，只列出专业来源的公开链接，不会下载或转存。有的课程要登录或付费；YouTube 链接在国内可能打不开。</li>
-      <li>「家里电脑后台」可打开工作台、知识库、医学检索、题库和后台总览。必须在家、连同一 Wi-Fi、电脑开着。没有「控制小智」入口。本地视频入口要等硬盘接上后再用。</li>
+      <li>「医美新知」可把需要的条目存到本机，回家后再同步到电脑，不会自动入库。</li>
+    <li>「家里电脑后台」可打开工作台、知识库、医学检索、题库和后台总览。必须在家、连同一 Wi-Fi、电脑开着。没有「控制小智」入口。本地视频入口要等硬盘接上后再用。</li>
       <li>对小智说「打开淘宝」「在抖音搜猫咪」「B站搜钢琴」。</li>
       <li>本页必须<b>开着并在前台</b>才能打开手机 App：锁屏、切到别的 App 后，iOS 会暂停网页。若已开通电脑汇聚，查知识库和记忆仍由电脑提供，不依赖本页在前台。未配置汇聚时，本页离开前台会断开接入点，回到本页会自动重连。</li>
       <li>Safari 打开别的 App 时可能弹出「在“淘宝”中打开？」需点“打开”；若没有自动跳转，点绿色大按钮即可。</li>
@@ -261,6 +280,7 @@
 <script src="notes.js"></script>
 <script src="videos.js"></script>
 <script src="records.js"></script>
+<script src="digest.js"></script>
 <script src="homeadmin.js"></script>
 <script src="hub.js"></script>
 <script src="app.js"></script>

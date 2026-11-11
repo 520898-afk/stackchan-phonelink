@@ -105,6 +105,7 @@
     onState: (st) => {
       showHub();
       if (st.reachable && !document.hidden && window.PhoneLinkRecords) window.PhoneLinkRecords.onHubReachable().catch(() => {});
+      if (st.reachable && !document.hidden && window.PhoneLinkDigest) window.PhoneLinkDigest.onHubReachable().catch(() => {});
       if (st.reachable && !lastHubReachable) {
         lastHubReachable = true;
         closeAccessPointSocket('电脑已汇聚，已断开手机接入点，避免互挤');
@@ -139,6 +140,11 @@
   if (Records && Records.bind) {
     if (hubClient && hubClient.callTool) Records.setCallTool((name, args, ms) => hubClient.callTool(name, args, ms));
     Records.bind();
+  }
+  const Digest = window.PhoneLinkDigest;
+  if (Digest && Digest.bind) {
+    if (hubClient && hubClient.callTool) Digest.setCallTool((name, args, ms) => hubClient.callTool(name, args, ms));
+    Digest.bind();
   }
 
   function fillHubForm() {

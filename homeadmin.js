@@ -4,8 +4,8 @@
 
   const KEY = 'stackchan.phonelink.homeAdmin';
   const DEFAULTS = {
-    base: 'http://192.168.3.8:8000',
-    fallback: 'http://macdemacbook-air.local:8000',
+    base: 'http://macdemacbook-air.local:8000',
+    fallback: 'http://192.168.3.17:8000',
   };
   // Intentionally omitted: /admin/control (motion commands are disabled).
   const LINKS = [
@@ -21,16 +21,53 @@
 
   function defaultCfg() { return { base: DEFAULTS.base, fallback: DEFAULTS.fallback }; }
 
+  function hostnameOf(url) {
+    try { return new URL(String(url || '').trim()).hostname.toLowerCase().replace(/\.$/, ''); }
+    catch (e) { return ''; }
+  }
+
+  // If the primary address is a LAN IP and the other slot is a .local name, prefer .local
+  // so DHCP IP changes do not break the buttons. Other fields (e.g. token) are kept.
+  function preferLocalHost(cfg, primaryKey) {
+    const key = primaryKey || 'base';
+    const out = Object.assign({}, cfg);
+    const primary = out[key];
+    const fallback = out.fallback;
+    const primaryHost = hostnameOf(primary);
+    const fallbackHost = hostnameOf(fallback);
+    if (_ipv4(primaryHost) && fallbackHost.endsWith('.local')) {
+      out[key] = fallback;
+      out.fallback = primary;
+    }
+    return out;
+  }
+
+  function storage() {
+    try {
+      if (typeof localStorage !== 'undefined') return localStorage;
+    } catch (e) {}
+    return null;
+  }
+
   function getCfg() {
-    try { return Object.assign(defaultCfg(), JSON.parse(localStorage.getItem(KEY) || '{}')); }
-    catch (e) { return defaultCfg(); }
+    let cfg;
+    try { cfg = Object.assign(defaultCfg(), JSON.parse((storage() && storage().getItem(KEY)) || '{}')); }
+    catch (e) { cfg = defaultCfg(); }
+    const preferred = preferLocalHost(cfg, 'base');
+    if (preferred.base !== cfg.base || preferred.fallback !== cfg.fallback) {
+      setCfg(preferred);
+    }
+    return preferred;
   }
 
   function setCfg(cfg) {
-    localStorage.setItem(KEY, JSON.stringify({
+    const next = {
       base: String(cfg.base || '').trim(),
       fallback: String(cfg.fallback || '').trim(),
-    }));
+    };
+    const store = storage();
+    if (store) store.setItem(KEY, JSON.stringify(next));
+    return next;
   }
 
   function joinBase(base, path) {
@@ -83,8 +120,8 @@
   }
 
   const HUB_DEFAULTS = {
-    url: 'https://192.168.3.8:8443',
-    fallback: 'https://macdemacbook-air.local:8443',
+    url: 'https://macdemacbook-air.local:8443',
+    fallback: 'https://192.168.3.17:8443',
   };
 
   function validateHubUrl(url) {
@@ -141,7 +178,7 @@
     };
   }
 
-  const api = { getCfg, setCfg, joinBase, validateBase, validateHubUrl, isPrivateOrLocalHost, LINKS, DEFAULTS, HUB_DEFAULTS, bind, renderLinks };
+  const api = { getCfg, setCfg, joinBase, validateBase, validateHubUrl, isPrivateOrLocalHost, preferLocalHost, LINKS, DEFAULTS, HUB_DEFAULTS, bind, renderLinks };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else {
     root.PhoneLinkHomeAdmin = api;

@@ -175,19 +175,19 @@
   <div id="homeAdminLinks" class="home-grid" style="margin-top:8px"></div>
   <details style="margin-top:10px">
     <summary><b>家里电脑地址</b></summary>
-    <p class="mut">默认是家里这台 Mac 的局域网地址。换了网或 IP 变了，可在这里改。</p>
-    <p class="mut">首选地址</p>
-    <input id="homeAdminBase" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://192.168.3.8:8000">
-    <p class="mut">备用地址（.local）</p>
-    <input id="homeAdminFallback" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://macdemacbook-air.local:8000">
+    <p class="mut">默认用电脑的 .local 名称，IP 变了也不用改。连不上时再用下面的备用 IP。</p>
+    <p class="mut">首选地址（.local）</p>
+    <input id="homeAdminBase" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://macdemacbook-air.local:8000">
+    <p class="mut">备用地址（局域网 IP）</p>
+    <input id="homeAdminFallback" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://192.168.3.17:8000">
     <div class="row" style="margin-top:8px"><button class="primary" id="homeAdminSaveBtn">保存地址</button></div>
     <p class="mut" id="homeAdminHint" style="margin:8px 0 0"></p>
     <p class="mut" style="margin-top:14px"><b>电脑汇聚</b>（让小智能同时用电脑知识库和手机打开 App）</p>
     <p class="mut">须使用 https 地址。电脑汇聚服务开通后，填写地址和令牌。未配置时行为与现在一样，只用手机工具。令牌只存在本机，不要发到聊天里。</p>
-    <p class="mut">汇聚地址</p>
-    <input id="hubUrl" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://192.168.3.8:8443">
-    <p class="mut">备用汇聚地址（.local）</p>
-    <input id="hubFallback" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://macdemacbook-air.local:8443">
+    <p class="mut">汇聚地址（.local）</p>
+    <input id="hubUrl" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://macdemacbook-air.local:8443">
+    <p class="mut">备用汇聚地址（局域网 IP）</p>
+    <input id="hubFallback" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://192.168.3.17:8443">
     <p class="mut">汇聚令牌</p>
     <input id="hubToken" type="password" autocomplete="off" placeholder="电脑上生成的令牌">
     <div class="row" style="margin-top:8px">

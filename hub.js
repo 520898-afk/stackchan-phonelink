@@ -11,13 +11,19 @@
     : (root.PhoneLinkHomeAdmin || {});
 
   function defaultCfg() {
-    const d = Home.HUB_DEFAULTS || { url: 'https://192.168.3.8:8443', fallback: 'https://macdemacbook-air.local:8443' };
+    const d = Home.HUB_DEFAULTS || { url: 'https://macdemacbook-air.local:8443', fallback: 'https://192.168.3.17:8443' };
     return { url: d.url, fallback: d.fallback, token: '' };
   }
 
   function getCfg() {
-    try { return Object.assign(defaultCfg(), JSON.parse((root.localStorage && root.localStorage.getItem(KEY)) || '{}')); }
-    catch (e) { return defaultCfg(); }
+    let cfg;
+    try { cfg = Object.assign(defaultCfg(), JSON.parse((root.localStorage && root.localStorage.getItem(KEY)) || '{}')); }
+    catch (e) { cfg = defaultCfg(); }
+    const preferred = Home.preferLocalHost ? Home.preferLocalHost(cfg, 'url') : cfg;
+    if (preferred.url !== cfg.url || preferred.fallback !== cfg.fallback) {
+      return setCfg(preferred);
+    }
+    return preferred;
   }
 
   function setCfg(cfg) {

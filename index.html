@@ -103,6 +103,48 @@
 </div>
 
 <div class="card">
+  <b>手术记录（手术步骤）</b>
+  <p class="mut">输入术式，从专业网站和医生科普平台整理手术步骤（麻醉、设计、切口、操作、缝合、包扎），再查本地知识库。不含病人信息，每条标来源，仅供医师整理参考。</p>
+  <input id="recInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：双眼皮、假体隆胸" style="margin:8px 0">
+  <button class="primary" id="recSearchBtn">整理手术步骤</button>
+</div>
+
+<div class="card">
+  <b>知情同意书风险条款</b>
+  <p class="mut">按术式或注射项目整理风险条款（一般风险、特有风险、严重并发症、效果不确定性等），每条标来源。不能直接作为法律文书，须按本院模板审核。</p>
+  <div class="row" style="margin-top:6px">
+    <label><input type="radio" name="consentType" value="consent" checked> 自动判断</label>
+    <label><input type="radio" name="consentType" value="consent_surgery"> 手术</label>
+    <label><input type="radio" name="consentType" value="consent_injection"> 注射</label>
+  </div>
+  <input id="consentInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：双眼皮、假体隆胸、玻尿酸、肉毒素、童颜针、水光" style="margin:8px 0">
+  <button class="primary" id="consentSearchBtn">整理风险条款</button>
+  <p class="mut" id="recHint" style="margin:8px 0 0">使用上面「医美助手设置」里同一组云函数地址和访问码。</p>
+</div>
+
+<div class="card" id="recResult" aria-live="polite" style="display:none">
+  <b id="recResultTitle">医疗文书</b>
+  <div id="recResultBody" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:12px">
+    <button class="primary" id="recSaveBtn">保存</button>
+    <button id="recExportBtn">导出 .md</button>
+    <button id="recCopyBtn">复制</button>
+    <button id="recShareBtn">分享</button>
+    <button id="recCloseBtn">关闭</button>
+  </div>
+</div>
+
+<div class="card">
+  <details>
+    <summary><b>已保存的文书（本机）</b></summary>
+    <p class="mut">保存在本机浏览器里（最多 100 份）。家里电脑开机、汇聚服务在线、手机在家里 Wi‑Fi 并且本页在前台打开时，会自动把未同步的文书存一份 .md 到电脑固定文件夹；iOS 不能在后台同步。不会自动放进知识库。</p>
+    <div class="mut" id="recSyncShow"></div>
+    <div id="recSavedList" class="mut" style="margin-top:8px">还没有保存的文书。</div>
+    <button id="recSyncBtn" style="margin-top:8px">立即同步到电脑</button>
+  </details>
+</div>
+
+<div class="card">
   <b>专业手术视频</b>
   <p class="mut">不用连接小智，输入手术名称，从专业网站检索教学或手术演示视频的公开链接。只给链接，不下载、不转存。使用上面「医美助手设置」里同一组云函数地址和访问码。</p>
   <input id="vidInput" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：双眼皮、眼袋、提眉、隆鼻、吸脂" style="margin:8px 0">
@@ -218,6 +260,7 @@
 <script src="mcp.js"></script>
 <script src="notes.js"></script>
 <script src="videos.js"></script>
+<script src="records.js"></script>
 <script src="homeadmin.js"></script>
 <script src="hub.js"></script>
 <script src="app.js"></script>

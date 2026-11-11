@@ -71,13 +71,110 @@
     return data;
   }
 
+  // ---------- 本地知识库（经家里电脑汇聚服务，只读） ----------
+  const LOCAL_UNAVAILABLE = '本地知识库这次查不到，只有网络结果';
+  const MAX_LOCAL_ITEMS = 8;
+  let localSearch = null; // (keyword) => Promise<hub /hub/tools/call 返回>
+  function setLocalSearch(fn) { localSearch = typeof fn === 'function' ? fn : null; }
+
+  // 解析汇聚服务转回的 search_knowledge 结果：{success, results:[{id, filename, excerpt}]}
+  function parseKbToolResult(res) {
+    if (!res || res.ok === false) return { ok: false, reason: (res && res.reason) || '汇聚服务没有响应。' };
+    if (res.isError) {
+      const t = res.content && res.content[0] && res.content[0].text;
+      return { ok: false, reason: t || '电脑端检索出错。' };
+    }
+    let payload = res.structuredContent;
+    if (payload && payload.result && typeof payload.result === 'object' && !payload.results) payload = payload.result;
+    if (!payload && Array.isArray(res.content)) {
+      const t = res.content.map(c => (c && c.type === 'text' && c.text) || '').join('');
+      try { payload = JSON.parse(t); } catch (e) { return { ok: false, reason: '电脑端返回格式不对。' }; }
+    }
+    if (!payload || typeof payload !== 'object') return { ok: false, reason: '电脑端返回格式不对。' };
+    if (payload.success === false) return { ok: false, reason: payload.error || '电脑端检索失败。' };
+    const items = (payload.results || []).filter(x => x && (x.filename || x.excerpt)).map(x => ({
+      id: x.id, filename: String(x.filename || ''), excerpt: String(x.excerpt || ''),
+    }));
+    return { ok: true, items: items };
+  }
+
+  async function searchLocal(data) {
+    const kws = ((data && data.kb_keywords) || []).filter(Boolean).slice(0, 2);
+    if (!kws.length && data && data.procedure) kws.push(data.procedure);
+    if (!localSearch) return { available: false, reason: '没有配置家里电脑汇聚服务。', items: [], keywords: kws };
+    const items = [];
+    const seen = new Set();
+    for (const kw of kws) {
+      let r;
+      try { r = parseKbToolResult(await localSearch(kw)); }
+      catch (e) { r = { ok: false, reason: '连接家里电脑失败。' }; }
+      if (!r.ok) {
+        if (!items.length) return { available: false, reason: r.reason, items: [], keywords: kws };
+        break;
+      }
+      for (const it of r.items) {
+        const key = it.id != null ? 'id:' + it.id : 'f:' + it.filename;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push(it);
+        if (items.length >= MAX_LOCAL_ITEMS) break;
+      }
+      if (items.length >= MAX_LOCAL_ITEMS) break;
+    }
+    return { available: true, items: items, keywords: kws };
+  }
+
+  function localCite(it) {
+    return '本地知识库' + (it.filename ? ' · ' + it.filename : '') + (it.id != null ? ' · #' + it.id : '');
+  }
+
+  function localPlain(local) {
+    if (!local) return '';
+    const lines = ['', '■ 本地知识库'];
+    if (!local.available) {
+      lines.push(LOCAL_UNAVAILABLE + '（' + String(local.reason || '原因未知').replace(/[。.\s]+$/, '') + '）。');
+    } else if (!local.items.length) {
+      lines.push('本地知识库没有找到「' + (local.keywords || []).join('、') + '」相关资料。');
+    } else {
+      local.items.forEach((it, i) => {
+        lines.push((i + 1) + '. ' + (it.excerpt || '（无摘录）'));
+        lines.push('   来源：' + localCite(it));
+      });
+    }
+    return lines.join('\n') + '\n';
+  }
+
+  function renderLocal(local) {
+    if (!local) return '';
+    let html = '<h3 class="notes-h">本地知识库</h3>';
+    if (!local.available) {
+      return html + '<p class="mut">' + escapeHtml(LOCAL_UNAVAILABLE + '（' + String(local.reason || '原因未知').replace(/[。.\s]+$/, '') + '）。') + '</p>';
+    }
+    if (!local.items.length) {
+      return html + '<p class="mut">' + escapeHtml('本地知识库没有找到「' + (local.keywords || []).join('、') + '」相关资料。') + '</p>';
+    }
+    html += '<ul class="notes-list">';
+    local.items.forEach(it => {
+      html += '<li>' + escapeHtml(it.excerpt || '（无摘录）') + '<div class="mut">来源：' + escapeHtml(localCite(it)) + '</div></li>';
+    });
+    return html + '</ul>';
+  }
+
+  function webTierLabel(it) {
+    const src = it.source || {};
+    const parts = [];
+    if (src.tier) parts.push(src.tier);
+    if (it.lang === 'en') parts.push('英文来源');
+    return parts.length ? ' · ' + parts.join(' · ') : '';
+  }
+
   function escapeHtml(s) {
     return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   function cardPlain(data) {
-    if (data && data.card_text) return data.card_text;
-    return (data && (data.error || data.message)) || '没有可复制的内容。';
+    const web = (data && data.card_text) || (data && (data.error || data.message)) || '没有可复制的内容。';
+    return data && data.local ? web.replace(/\s+$/, '') + '\n' + localPlain(data.local) : web;
   }
 
   function renderSections(data) {
@@ -99,21 +196,25 @@
         const cite = url
           ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noreferrer">' + escapeHtml(src) + '</a>'
           : escapeHtml(src);
-        html += '<li>' + escapeHtml(it.text) + '<div class="mut">来源：' + cite + '</div></li>';
+        html += '<li>' + escapeHtml(it.text) + '<div class="mut">来源：' + cite + escapeHtml(webTierLabel(it)) + '</div></li>';
       });
       html += '</ul>';
     });
     const sources = data.sources || [];
-    if (sources.length) {
-      html += '<h3 class="notes-h">来源</h3><ol class="notes-src">';
-      sources.forEach(s => {
+    const tiers = [];
+    sources.forEach(s => { const t = s.tier || ''; if (tiers.indexOf(t) < 0) tiers.push(t); });
+    tiers.forEach(t => {
+      const group = sources.filter(s => (s.tier || '') === t);
+      html += '<h3 class="notes-h">' + escapeHtml(t ? '来源（' + t + '）' : '来源') + '</h3><ol class="notes-src">';
+      group.forEach(s => {
         const label = escapeHtml((s.name || '（无标题）') + (s.site ? ' — ' + s.site : ''));
         if (s.url) html += '<li><a href="' + escapeHtml(s.url) + '" target="_blank" rel="noreferrer">' + label + '</a></li>';
         else html += '<li>' + label + '</li>';
       });
       html += '</ol>';
-    }
-    if (!html) html = '<pre class="notes-pre">' + escapeHtml(cardPlain(data)) + '</pre>';
+    });
+    if (!html) html = '<pre class="notes-pre">' + escapeHtml((data && (data.card_text || data.error || data.message)) || '没有可复制的内容。') + '</pre>';
+    html += renderLocal(data.local);
     return html;
   }
 
@@ -129,6 +230,7 @@
       sources: data.sources || [],
       disclaimer: data.disclaimer || '',
       message: data.message || data.error || '',
+      local: data.local || null,
     };
   }
 
@@ -212,6 +314,11 @@
     catch (e) { data = { ok: false, error: '网络异常，请稍后重试。', procedure: procedure }; }
     setBusy(false);
     showResult(data, opts);
+    // 先网络、后本地知识库：网络结果先显示，再追加「本地知识库」一节。
+    if ($('notesHint')) $('notesHint').textContent = '网络结果已显示，正在查本地知识库…';
+    try { data.local = await searchLocal(data); }
+    catch (e) { data.local = { available: false, reason: '连接家里电脑失败。', items: [] }; }
+    showResult(data, Object.assign({}, opts, { scroll: false }));
     if (!data.offline_config) {
       pushHist(histItemFrom(data));
       renderHist();
@@ -291,11 +398,17 @@
     const v = validateProcedure(procedure);
     if (!v.ok) return { ok: false, text: v.error };
     const data = await runQuery(v.procedure, { fromRobot: true });
-    const spoken = data.summary_for_robot || data.message || data.error || '查询结束，请查看手机上的卡片。';
+    let spoken = data.summary_for_robot || data.message || data.error || '查询结束，请查看手机上的卡片。';
+    if (data.local && data.local.available && data.local.items.length) {
+      spoken += ' 本地知识库另有' + data.local.items.length + '篇相关资料，已显示在手机上。';
+    }
     return { ok: !!data.ok, text: spoken };
   }
 
-  const api = { getCfg, setCfg, getHist, query, getProcedureNotes, bind, validateProcedure };
+  const api = {
+    getCfg, setCfg, getHist, query, getProcedureNotes, bind, validateProcedure,
+    setLocalSearch, searchLocal, parseKbToolResult, renderSections, cardPlain, LOCAL_UNAVAILABLE,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PhoneLinkNotes = api;
 })(typeof self !== 'undefined' ? self : this);

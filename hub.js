@@ -3,6 +3,9 @@
   'use strict';
 
   const KEY = 'stackchan.phonelink.hub';
+  const HUB_READ_TOOLS = ['search_knowledge'];
+  // 唯一的写入工具：手术记录/知情同意书 .md 存到电脑固定文件夹（2026-11-11）。
+  const HUB_WRITE_TOOLS = ['save_medical_doc'];
   const Home = (typeof module !== 'undefined' && module.exports)
     ? require('./homeadmin.js')
     : (root.PhoneLinkHomeAdmin || {});
@@ -238,16 +241,27 @@
     }
 
     function isReachable() { return !!state.reachable; }
+
+    // 手机页只读调用电脑工具：目前只允许本地知识库检索，不允许写入或其它工具。
+    async function callTool(name, args, waitMs) {
+      if (HUB_READ_TOOLS.indexOf(name) < 0 && HUB_WRITE_TOOLS.indexOf(name) < 0) return { ok: false, reason: '该工具不允许从手机页调用。' };
+      const cfg = getCfgFn();
+      if (!cfg.token) return { ok: false, reason: '没有配置家里电脑汇聚服务。' };
+      // 刚打开页面时可能还没探测过：先探测一次（与 7 秒轮询同一逻辑），仍连不上就明确告知。
+      if (!state.reachable && !state.probing) { try { await tick({}); } catch (e) {} }
+      if (!state.reachable) return { ok: false, reason: '连不上家里电脑（不在家里 Wi‑Fi，或电脑离线/休眠）。' };
+      return postJson('/hub/tools/call', { name: name, arguments: args || {} }, waitMs || 8000);
+    }
     function getState() { return snapshot(); }
 
     return {
-      tick, ensureSidecar, stopSidecar, isReachable, getState, shouldConnectAccessPoint: function () { return shouldConnectAccessPoint(state); },
+      tick, ensureSidecar, stopSidecar, isReachable, getState, callTool, shouldConnectAccessPoint: function () { return shouldConnectAccessPoint(state); },
       sidecarOnce, probeTarget, classifyProbeError, classifyHttpStatus,
     };
   }
 
   const api = {
-    KEY, getCfg, setCfg, clearCfg, isConfigured, joinHub, probeHealth,
+    KEY, HUB_READ_TOOLS, HUB_WRITE_TOOLS, getCfg, setCfg, clearCfg, isConfigured, joinHub, probeHealth,
     classifyProbeError, classifyHttpStatus, shouldConnectAccessPoint, createHubClient,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -104,6 +104,7 @@
     retries: 2,
     onState: (st) => {
       showHub();
+      if (st.reachable && !document.hidden && window.PhoneLinkRecords) window.PhoneLinkRecords.onHubReachable().catch(() => {});
       if (st.reachable && !lastHubReachable) {
         lastHubReachable = true;
         closeAccessPointSocket('电脑已汇聚，已断开手机接入点，避免互挤');
@@ -129,6 +130,16 @@
 
   function hubConfigured() { return !!(Hub && Hub.isConfigured(Hub.getCfg())); }
   function hubReachable() { return !!(hubClient && hubClient.isReachable()); }
+  // 术后注意事项：网络结果之后，经汇聚服务只读查本地知识库（不在家时明确提示查不到）。
+  if (Notes && Notes.setLocalSearch && hubClient && hubClient.callTool) {
+    Notes.setLocalSearch(keyword => hubClient.callTool('search_knowledge', { keyword: keyword }, 8000));
+  }
+  // 手术记录 / 知情同意书：本机保存；汇聚服务可达（且本页在前台）时把未同步的 .md 存到电脑。
+  const Records = window.PhoneLinkRecords;
+  if (Records && Records.bind) {
+    if (hubClient && hubClient.callTool) Records.setCallTool((name, args, ms) => hubClient.callTool(name, args, ms));
+    Records.bind();
+  }
 
   function fillHubForm() {
     if (!Hub) return;

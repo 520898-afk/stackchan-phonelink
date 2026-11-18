@@ -11,8 +11,8 @@
     : (root.PhoneLinkHomeAdmin || {});
 
   function defaultCfg() {
-    const d = Home.HUB_DEFAULTS || { url: 'https://macdemacbook-air.local:8443', fallback: 'https://192.168.3.17:8443' };
-    return { url: d.url, fallback: d.fallback, token: '' };
+    const d = Home.HUB_DEFAULTS || { url: 'https://macdemacbook-air.local:8443', fallback: '' };
+    return { url: d.url, fallback: d.fallback || '', token: '' };
   }
 
   function getCfg() {
@@ -20,16 +20,21 @@
     try { cfg = Object.assign(defaultCfg(), JSON.parse((root.localStorage && root.localStorage.getItem(KEY)) || '{}')); }
     catch (e) { cfg = defaultCfg(); }
     const preferred = Home.preferLocalHost ? Home.preferLocalHost(cfg, 'url') : cfg;
-    if (preferred.url !== cfg.url || preferred.fallback !== cfg.fallback) {
-      return setCfg(preferred);
+    const url = Home.normalizeHubUrl ? Home.normalizeHubUrl(preferred.url) : preferred.url;
+    const fallback = Home.normalizeHubFallback ? Home.normalizeHubFallback(preferred.fallback, preferred.url) : (preferred.fallback || '');
+    const next = { url: url, fallback: fallback, token: String(preferred.token || '').trim() };
+    if (next.url !== cfg.url || next.fallback !== cfg.fallback) {
+      return setCfg(next);
     }
-    return preferred;
+    return next;
   }
 
   function setCfg(cfg) {
+    const url = Home.normalizeHubUrl ? Home.normalizeHubUrl((cfg && cfg.url) || '') : String((cfg && cfg.url) || '').trim();
+    const fallback = Home.normalizeHubFallback ? Home.normalizeHubFallback((cfg && cfg.fallback) || '', url) : String((cfg && cfg.fallback) || '').trim();
     const next = {
-      url: String((cfg && cfg.url) || '').trim(),
-      fallback: String((cfg && cfg.fallback) || '').trim(),
+      url: url,
+      fallback: fallback,
       token: String((cfg && cfg.token) || '').trim(),
     };
     if (root.localStorage) root.localStorage.setItem(KEY, JSON.stringify(next));

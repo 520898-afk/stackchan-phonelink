@@ -301,9 +301,9 @@
       const hint = $('hubHint');
       if (err) { if (hint) hint.textContent = err; return; }
       if (!token) { if (hint) hint.textContent = '请填写汇聚令牌（不要发到聊天里）。'; return; }
-      Hub.setCfg({ url, fallback, token });
-      if ($('hubToken')) $('hubToken').value = '********';
-      if (hint) hint.textContent = '汇聚设置已保存。只存在本机，不会上传到 GitHub Pages。';
+      const saved = Hub.setCfg({ url, fallback, token });
+      fillHubForm();
+      if (hint) hint.textContent = '汇聚设置已保存。地址已规范为 ' + saved.url + '。令牌只存在本机，不会上传到 GitHub Pages。';
       log('已保存电脑汇聚地址');
       lastHubReachable = hubReachable();
       hubTick(true).then(() => { if (wantConnected && !hubReachable() && endpoint) connect(); });

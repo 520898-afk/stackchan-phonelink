@@ -90,6 +90,12 @@
     return Notes.getProcedureNotes(procedure);
   };
   const handler = M.createHandler({ launch, isForeground: () => !document.hidden, log, getProcedureNotes });
+  const Originals = window.PhoneLinkOriginals;
+  const originals = Originals ? Originals.browserPresenter({
+    isForeground: () => !document.hidden,
+    autoOpen: () => prefs.autoOpen,
+    fetchOriginal: path => hubClient.fetchOriginal(path),
+  }) : null;
 
   // ---------- 电脑汇聚 ----------
   let lastHubReachable = false;
@@ -98,7 +104,11 @@
     getCfg: () => Hub.getCfg(),
     isForeground: () => !document.hidden,
     phoneTools: () => M.toolDefinitions(),
-    callPhoneTool: (name, args) => handler.callTool(name, args),
+    callPhoneTool: (name, args) => originals && name === Originals.TOOL
+      ? originals.present(args) : handler.callTool(name, args),
+    afterPhoneResult: (name, posted) => {
+      if (originals && name === Originals.TOOL) originals.afterAcknowledged(posted);
+    },
     log,
     timeoutMs: 6000,
     retries: 2,

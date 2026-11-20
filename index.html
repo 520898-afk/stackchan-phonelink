@@ -59,6 +59,8 @@
   .home-link { margin:10px 0; }
   .home-link .btn { margin-right:8px; }
   .home-grid { display:flex; flex-direction:column; gap:4px; }
+  #knowledgeLinks a { color:#93c5fd; }
+  #knowledgeLinks li { margin:10px 0; }
 </style>
 </head>
 <body>
@@ -216,6 +218,15 @@
   </details>
 </div>
 
+<section id="knowledgeOriginals" hidden aria-live="polite" style="padding:14px 0;border-top:1px solid #374151">
+  <div class="row" style="justify-content:space-between">
+    <b>知识库原文</b><button id="knowledgeClose" aria-label="关闭原文结果">关闭</button>
+  </div>
+  <p id="knowledgeStatus" class="mut"></p>
+  <p id="knowledgeAnswer" style="white-space:pre-wrap;overflow-wrap:anywhere"></p>
+  <ul id="knowledgeLinks" style="padding-left:1.2em;overflow-wrap:anywhere"></ul>
+</section>
+
 <div class="card" id="openBox" aria-live="assertive">
   <div class="mut" id="openHint">小智请求：</div>
   <a id="openBtn" href="#" rel="noreferrer">打开</a>
@@ -283,6 +294,7 @@
 <script src="digest.js"></script>
 <script src="homeadmin.js"></script>
 <script src="hub.js"></script>
+<script src="originals.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

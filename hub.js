@@ -224,6 +224,7 @@
         if (!env.callPhoneTool) continue;
         const result = await env.callPhoneTool(call.name, call.arguments || {});
         const posted = await postJson('/hub/sidecar/result', { id: call.id, result: result }, 8000);
+        if (env.afterPhoneResult) env.afterPhoneResult(call.name, posted.ok);
         if (env.log) env.log((call.name || '?') + ' → 已回传电脑汇聚' + (posted.ok ? '' : '（回传失败）'));
       }
       return res;
@@ -265,9 +266,24 @@
     }
     function getState() { return snapshot(); }
 
+    async function fetchOriginal(path) {
+      if (!/^\/hub\/knowledge\/original\/[1-9][0-9]{0,9}$/.test(path)) throw new Error('原文路径无效');
+      const cfg = getCfgFn();
+      if (!state.reachable || !cfg.token) throw new Error('电脑尚未连接');
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const res = await fetchFn(joinHub(state.activeUrl || cfg.url, path), {
+          headers: { Authorization: 'Bearer ' + cfg.token }, signal: ctrl.signal, cache: 'no-store',
+        });
+        if (!res.ok) throw new Error('原文件不可用');
+        return await res.blob();
+      } finally { clearTimeout(timer); }
+    }
+
     return {
       tick, ensureSidecar, stopSidecar, isReachable, getState, callTool, shouldConnectAccessPoint: function () { return shouldConnectAccessPoint(state); },
-      sidecarOnce, probeTarget, classifyProbeError, classifyHttpStatus,
+      sidecarOnce, probeTarget, classifyProbeError, classifyHttpStatus, fetchOriginal,
     };
   }
 
